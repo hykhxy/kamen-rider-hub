@@ -7,15 +7,15 @@
   var RAW = 'https://raw.githubusercontent.com/hykhxy/kamen-rider-archive/main/';
   /* 公网版：本地镜像不上传，第 0 线路改为 jsDelivr（全球可达），
      国内网络由其后的 ghfast / wsrv 兜底 */
-  var LOCAL_PREFIX = 'https://cdn.jsdelivr.net/gh/hykhxy/kamen-rider-archive@main/';
+  var LOCAL_PREFIX = 'https://gcore.jsdelivr.net/gh/hykhxy/kamen-rider-archive@main/';
   var TIER_COUNT = 5;
-  var TIER_NAME = ['jsdelivr', 'ghfast', 'wsrv', 'jsdelivr2', 'raw'];
+  var TIER_NAME = ['jsdelivr-gcore', 'ghfast', 'wsrv', 'jsdelivr', 'raw'];
 
   var TIERS = [
     function (p) { return LOCAL_PREFIX + p; },
     function (p) { return 'https://ghfast.top/' + RAW + p; },
     function (p, w) { return 'https://wsrv.nl/?url=raw.githubusercontent.com/hykhxy/kamen-rider-archive/main/' + p + '&w=' + w + '&output=webp&q=86'; },
-    function (p) { return 'https://gcore.jsdelivr.net/gh/hykhxy/kamen-rider-archive@main/' + p; },
+    function (p) { return 'https://cdn.jsdelivr.net/gh/hykhxy/kamen-rider-archive@main/' + p; },
     function (p) { return RAW + p; }
   ];
 
