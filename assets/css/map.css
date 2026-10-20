@@ -1,0 +1,329 @@
+/* owner: quest-create — 关卡地图：战术图纸（等高线 / 刻度 / 时间轴主线 / 三视角） */
+
+.mapview{display:grid;gap:var(--sp-4)}
+
+/* ── 关卡头 ─────────────────────────────────────────────── */
+.map-head{display:grid;gap:var(--sp-3)}
+.map-levels{display:flex;flex-wrap:wrap;gap:var(--sp-2)}
+
+.map-lv{
+  display:inline-flex;align-items:baseline;gap:var(--sp-2);
+  padding:9px var(--sp-4);
+  background:var(--ink-1);
+  color:var(--tx-1);
+  border:1px solid var(--line);
+  clip-path:var(--clip-slab);
+  font-size:var(--fs-13);letter-spacing:.1em;
+  transition:border-color var(--t) var(--ease),color var(--t) var(--ease),background var(--t) var(--ease)
+}
+.map-lv:hover{border-color:var(--line-hi);color:var(--tx-0)}
+.map-lv.is-on{
+  border-color:var(--gold);
+  background:linear-gradient(180deg,var(--gold-a12),var(--ink-1) 70%);
+  color:var(--gold-hi);
+  box-shadow:inset 0 0 20px var(--gold-a06)
+}
+.map-lv-no{font-family:var(--font-num);font-size:var(--fs-11);letter-spacing:.14em;color:var(--tx-2)}
+.map-lv.is-on .map-lv-no{color:var(--gold)}
+.map-lv-name{font-size:var(--fs-13)}
+.map-lv-count{
+  font-family:var(--font-num);font-variant-numeric:tabular-nums;
+  font-size:var(--fs-11);color:var(--tx-2);
+  padding:1px 6px;border-left:1px solid var(--line);margin-left:2px
+}
+
+.map-meta{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-3);font-size:var(--fs-11);letter-spacing:.1em}
+.map-meta-k{font-family:var(--font-num);color:var(--gold-hi);letter-spacing:.14em}
+.map-meta-v{color:var(--tx-2)}
+.map-meta-v+.map-meta-v::before{content:"/";margin-right:var(--sp-3);color:var(--line-hi)}
+.map-desc{max-width:82ch;color:var(--tx-2);font-size:var(--fs-13);line-height:1.75}
+
+/* 区间挂靠说明：默认折叠 */
+.map-notes{display:grid;gap:6px;justify-items:start}
+.map-notes-tg{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:4px 10px;
+  border:1px solid var(--line);background:var(--ink-1);
+  font-size:var(--fs-11);letter-spacing:.1em;color:var(--tx-1);
+  clip-path:var(--clip-slab);
+  transition:border-color var(--t) var(--ease),color var(--t) var(--ease)
+}
+.map-notes-tg:hover{border-color:var(--gold-a24);color:var(--gold-hi)}
+.map-notes-tg.is-open{border-color:var(--gold-a40);color:var(--gold-hi)}
+.map-notes-k{color:currentColor}
+.map-notes-n{
+  font-family:var(--font-num);font-variant-numeric:tabular-nums;
+  color:var(--gold);padding:0 5px;border-left:1px solid var(--line)
+}
+.map-notes-i{color:var(--tx-2);font-size:9px;letter-spacing:.16em}
+.map-notes-tg:hover .map-notes-i{color:var(--tx-0)}
+.map-notes-list{
+  display:grid;gap:4px;width:100%;max-width:96ch;
+  padding:var(--sp-2) var(--sp-3);
+  border-left:2px solid var(--gold-dim);background:var(--w-a03)
+}
+.map-notes-list li{
+  position:relative;padding-left:14px;
+  font-size:var(--fs-12);line-height:1.7;color:var(--tx-1)
+}
+.map-notes-list li::before{
+  content:"×";position:absolute;left:0;top:0;
+  color:var(--gold-dim);font-family:var(--font-num);font-size:var(--fs-11)
+}
+
+/* ── 主体：图 + 档案 ────────────────────────────────────── */
+.map-body{display:grid;grid-template-columns:minmax(0,1fr) 372px;gap:var(--sp-4);align-items:start}
+
+/* ── 战术图纸 ───────────────────────────────────────────── */
+.map-stage{
+  position:relative;min-width:0;
+  aspect-ratio:16/8.4;
+  min-height:340px;
+  overflow:hidden;
+  border:1px solid var(--line);
+  background:
+    linear-gradient(180deg,rgba(7,8,11,.92),rgba(10,12,17,.96)),
+    repeating-linear-gradient(0deg,var(--w-a03) 0 1px,transparent 1px 40px),
+    repeating-linear-gradient(90deg,var(--w-a03) 0 1px,transparent 1px 40px),
+    radial-gradient(120% 90% at 50% 40%,var(--ink-2),var(--ink-0) 74%);
+  clip-path:var(--clip-slab)
+}
+/* 四角十字刻度 */
+.map-stage::before,.map-stage::after{
+  content:"";position:absolute;width:14px;height:14px;z-index:3;pointer-events:none;
+  border:1px solid var(--gold-a24)
+}
+.map-stage::before{left:6px;top:6px;border-right:0;border-bottom:0}
+.map-stage::after{right:6px;bottom:6px;border-left:0;border-top:0}
+
+.map-canvas{
+  position:absolute;left:0;top:0;
+  transform-origin:0 0;
+  will-change:transform;
+  transition:transform var(--t-slow) var(--ease-out)
+}
+.map-svg{display:block;overflow:visible}
+
+/* 等高线 / 时间轴 / 连接线 */
+.map-contour-line{fill:none;stroke:var(--line);stroke-width:1;opacity:.85}
+.map-contour-line:nth-child(2n){stroke-dasharray:2 6;opacity:.5}
+.map-axis{
+  fill:none;stroke:var(--gold-dim);stroke-width:1.6;
+  stroke-linecap:round;stroke-dasharray:none;opacity:.9
+}
+.map-link{
+  fill:none;stroke:var(--cyan-dim);stroke-width:1;
+  stroke-dasharray:3 5;opacity:.55
+}
+.map-tick{stroke:var(--line-hi);stroke-width:1}
+.map-tick-lbl{
+  fill:var(--tx-2);font-family:var(--font-num);font-size:9px;
+  letter-spacing:.16em;opacity:.75
+}
+.map-cross line{stroke:var(--cyan);stroke-width:1;opacity:.35}
+.map-cross-ring{fill:none;stroke:var(--cyan);stroke-width:1;stroke-dasharray:2 8;opacity:.28}
+
+/* 选中引线 */
+.map-lead-line{
+  stroke:var(--red-hi);stroke-width:1.1;stroke-dasharray:5 5;
+  opacity:.75;animation:map-lead-run 1.4s linear infinite
+}
+.map-lead-tip{fill:var(--red-hi)}
+@keyframes map-lead-run{to{stroke-dashoffset:-20}}
+@media (prefers-reduced-motion:reduce){.map-lead-line{animation:none}}
+
+/* ── 节点 ───────────────────────────────────────────────── */
+.map-node{cursor:pointer;outline:none}
+.map-node-hit{fill:transparent}
+.map-node-core{
+  transform-box:fill-box;transform-origin:center;
+  transition:transform var(--t-fast) var(--ease)
+}
+.map-node-ring{
+  fill:none;stroke:var(--line-hi);stroke-width:1.4;
+  r:11;transition:r var(--t-fast) var(--ease),stroke var(--t) var(--ease)
+}
+.map-node-dot{fill:var(--gold-hi);r:3.4;transition:fill var(--t) var(--ease)}
+.map-node-stem{stroke:var(--line-hi);stroke-width:1;opacity:.55}
+.map-node:focus-visible .map-node-ring{stroke:var(--gold-hi)}
+
+.map-node:hover .map-node-core{transform:scale(1.34)}
+.map-node:hover .map-node-ring{r:15;stroke:var(--gold)}
+.map-node.is-sel .map-node-core{transform:scale(1.5)}
+.map-node.is-sel .map-node-ring{r:18;stroke:var(--gold-hi);stroke-width:2}
+.map-node.is-sel .map-node-dot{fill:var(--red-hi)}
+.map-node.is-sel .map-node-stem{stroke:var(--gold);opacity:.9}
+
+/* 编号：全览时顶替铭牌 */
+.map-node-tag{
+  transform-box:fill-box;transform-origin:0% 50%;
+  transform:scale(var(--lbl,1));
+  pointer-events:none
+}
+.map-node-tag text{
+  fill:var(--tx-2);font-family:var(--font-num);font-size:10px;
+  letter-spacing:.1em;font-variant-numeric:tabular-nums
+}
+.map-node.is-sel .map-node-tag text{fill:var(--gold-hi)}
+.map-node:hover .map-node-tag text{fill:var(--tx-0)}
+
+/* 铭牌 */
+.map-node-plate{
+  transform-box:fill-box;transform-origin:50% 0%;
+  transform:scale(var(--lbl,1));
+  opacity:0;visibility:hidden;
+  transition:opacity var(--t) var(--ease)
+}
+.map-plate-bg{
+  fill:rgba(9,11,15,.94);
+  stroke:var(--line-hi);stroke-width:1
+}
+.map-node-no{
+  fill:var(--gold);font-family:var(--font-num);font-size:10px;
+  letter-spacing:.06em;font-variant-numeric:tabular-nums
+}
+.map-node-name{fill:var(--tx-0);font-size:11px;letter-spacing:.02em}
+.map-node-year{
+  fill:var(--tx-2);font-family:var(--font-num);font-size:9.5px;
+  letter-spacing:.02em;font-variant-numeric:tabular-nums
+}
+.map-node.is-sel .map-plate-bg{stroke:var(--gold);fill:rgba(16,13,6,.96)}
+.map-node.is-sel .map-node-name{fill:var(--gold-hi)}
+
+.map-node:hover .map-node-plate,
+.map-node.is-sel .map-node-plate{opacity:1;visibility:visible}
+.map-stage[data-view="region"] .map-node-plate,
+.map-stage[data-view="close"] .map-node-plate{opacity:1;visibility:visible}
+
+.map-stage[data-view="overview"] .map-node-ring{r:15}
+.map-stage[data-view="overview"] .map-node-dot{r:4.6}
+.map-stage[data-view="region"] .map-node-tag,
+.map-stage[data-view="close"] .map-node-tag{display:none}
+
+/* ── 视角按钮 ───────────────────────────────────────────── */
+.map-views{
+  position:absolute;right:var(--sp-2);top:var(--sp-2);z-index:4;
+  display:flex;gap:4px;padding:4px;
+  background:rgba(7,8,11,.72);border:1px solid var(--line)
+}
+.map-vbtn{--cut:5px;height:26px;padding:0 10px;letter-spacing:.14em}
+.map-vbtn.is-on{
+  --edge:linear-gradient(160deg,var(--gold-hi),var(--gold-dim));
+  --fill:linear-gradient(180deg,#2b2413,#191408);
+  color:var(--gold-hi)
+}
+
+/* ── 特写层：舞台纹理 + 敌方剪影 ───────────────────────── */
+.map-close{
+  position:absolute;inset:0;z-index:2;pointer-events:none;
+  display:grid;align-content:end;gap:0
+}
+.map-tex{position:absolute;inset:0;overflow:hidden;opacity:.22}
+.map-tex-img{
+  width:100%;height:100%;object-fit:cover;
+  filter:grayscale(1) contrast(1.25) brightness(.62);
+  transform:scale(1.06)
+}
+.map-tex-hatch{
+  position:absolute;inset:0;
+  background:
+    repeating-linear-gradient(45deg,var(--w-a06) 0 1px,transparent 1px 9px),
+    repeating-linear-gradient(180deg,rgba(0,0,0,.32) 0 1px,transparent 1px 4px),
+    radial-gradient(90% 70% at 50% 100%,rgba(7,8,11,.92),transparent 66%)
+}
+.map-foes{
+  position:relative;
+  display:flex;align-items:flex-end;gap:var(--sp-3);
+  padding:var(--sp-3) var(--sp-4);
+  background:linear-gradient(0deg,rgba(6,7,10,.94),transparent);
+  border-top:1px solid var(--red-a14)
+}
+.map-foes-k{
+  align-self:center;
+  font-size:var(--fs-11);letter-spacing:var(--track-wide);color:var(--red-hi);
+  writing-mode:vertical-rl;text-orientation:upright;opacity:.8
+}
+.map-foe{display:grid;justify-items:center;gap:2px;margin:0;width:64px}
+.map-foe img{
+  width:64px;height:82px;object-fit:contain;
+  filter:grayscale(1) brightness(0) invert(.46) contrast(1.3);
+  transition:filter var(--t) var(--ease)
+}
+.map-foe:hover img{filter:grayscale(1) brightness(0) invert(.82) contrast(1.1)}
+.map-foe figcaption{
+  font-size:9px;letter-spacing:0;color:var(--tx-2);
+  max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center
+}
+.map-foe-skel{display:block;width:64px;height:82px}
+
+/* ── 右侧地点档案 ──────────────────────────────────────── */
+.map-panel{
+  --fill:linear-gradient(180deg,#12151c,#0a0d12);
+  display:flex;flex-direction:column;
+  max-height:calc(100vh - 190px);
+  min-height:280px;
+  overflow:hidden
+}
+.map-panel .panel-hd{gap:var(--sp-2)}
+.map-panel .panel-hd h2{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.map-panel-no{
+  font-family:var(--font-num);font-variant-numeric:tabular-nums;
+  font-size:var(--fs-11);letter-spacing:.1em;color:var(--gold);
+  padding:2px 6px;border:1px solid var(--gold-a24)
+}
+.map-panel-bd{
+  display:grid;gap:var(--sp-4);
+  overflow:auto;flex:1 1 auto;min-height:0
+}
+
+.map-kv-grid{display:grid;gap:0;border-top:1px solid var(--line)}
+.map-kv{
+  display:grid;grid-template-columns:5.4em 1fr;gap:var(--sp-2);
+  align-items:baseline;
+  padding:6px 0;border-bottom:1px solid rgba(42,47,58,.6);
+  font-size:var(--fs-12)
+}
+.map-kk{
+  font-size:var(--fs-11);letter-spacing:var(--track-wide);
+  color:var(--tx-2);white-space:nowrap
+}
+.map-kv-t{color:var(--tx-1);word-break:break-word}
+
+.map-theme{
+  color:var(--tx-1);font-size:var(--fs-13);line-height:1.7;
+  padding-left:var(--sp-3);
+  border-left:2px solid var(--gold-a40)
+}
+
+.map-brief{display:grid;gap:var(--sp-2);padding:var(--sp-3);border:1px solid var(--line);background:var(--w-a03)}
+.map-idn{display:flex;align-items:baseline;gap:var(--sp-2);font-size:var(--fs-13)}
+.map-idn b{color:var(--gold-hi);font-weight:500}
+.map-hook{
+  font-size:var(--fs-13);color:var(--tx-0);line-height:1.65;
+  padding-left:var(--sp-3);border-left:2px solid var(--red-a34)
+}
+
+.map-sig{display:flex;align-items:center;gap:var(--sp-3);padding-top:var(--sp-3);border-top:1px solid var(--line)}
+.map-sig-img{
+  width:52px;height:68px;object-fit:cover;object-position:top center;
+  border:1px solid var(--line-hi);background:var(--ink-2);flex:0 0 auto
+}
+.map-sig-t{display:grid;gap:2px;min-width:0}
+.map-sig-t b{color:var(--tx-0);font-weight:500;font-size:var(--fs-13)}
+
+/* ── 响应式：窄屏面板落到图下方 ─────────────────────────── */
+@media (max-width:1100px){
+  .map-body{grid-template-columns:minmax(0,1fr) 320px}
+}
+@media (max-width:980px){
+  .map-body{grid-template-columns:minmax(0,1fr)}
+  .map-stage{aspect-ratio:auto;min-height:300px;height:56vh}
+  .map-panel{max-height:none;order:2}
+  .map-views{right:var(--sp-1);top:var(--sp-1)}
+}
+@media (max-width:640px){
+  .map-stage{height:48vh;min-height:240px}
+  .map-lv{padding:8px var(--sp-3)}
+  .map-foe{width:52px}
+  .map-foe img{width:52px;height:68px}
+}

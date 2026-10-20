@@ -1,0 +1,245 @@
+/* owner: roster-rider — 骑士图鉴（#/roster）与骑士详情（#/rider）
+   只用 tokens.css 的变量；形制靠斜切与刻度，不靠圆角与辉光堆叠。 */
+
+/* ── 两块视图共用骨架 ──────────────────────────────────── */
+.rk,.rd{display:flex;flex-direction:column;gap:var(--sp-4);min-width:0}
+
+/* 金属渐变标题：先给实色，能 background-clip 才上渐变，避免整块透明 */
+.rk-title,.rd-title{
+  font-size:var(--fs-26);font-weight:600;letter-spacing:.06em;line-height:var(--lh-tight);
+  color:var(--tx-0);min-width:0
+}
+@supports ((-webkit-background-clip:text) or (background-clip:text)){
+  .rk-title,.rd-title{
+    background:linear-gradient(180deg,var(--tx-0) 0%,var(--gold-hi) 44%,var(--gold) 68%,var(--gold-dim) 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent
+  }
+}
+.rd-sub{font-size:var(--fs-12);color:var(--tx-2);letter-spacing:.1em;min-width:0}
+
+/* 编号刻度 */
+.rk-no{
+  display:inline-flex;align-items:baseline;gap:4px;
+  font-family:var(--font-num);font-size:var(--fs-11);letter-spacing:.22em;
+  color:var(--tx-2);text-transform:uppercase
+}
+.rk-no b{font-size:var(--fs-13);letter-spacing:.12em;color:var(--gold-hi);font-weight:600}
+.rk-ruler{
+  height:9px;flex:1 1 auto;min-width:40px;align-self:center;
+  background:repeating-linear-gradient(90deg,var(--line-hi) 0 1px,transparent 1px 7px);
+  opacity:.85
+}
+
+/* 扫描线：只叠最上层，不吃事件 */
+.rk-scan{
+  position:absolute;inset:0;z-index:3;pointer-events:none;
+  background:repeating-linear-gradient(0deg,rgba(238,241,246,var(--scan-a)) 0 1px,transparent 1px var(--scan-step))
+}
+
+/* 斜切刻角 */
+.rk-tick{position:absolute;width:12px;height:12px;z-index:5;pointer-events:none;border:1px solid var(--gold-a40)}
+.rk-tick--tl{top:0;left:0;border-right:0;border-bottom:0}
+.rk-tick--br{bottom:0;right:0;border-left:0;border-top:0}
+
+/* ── 图鉴：三栏 ────────────────────────────────────────── */
+.rk-grid{
+  display:grid;gap:var(--sp-4);align-items:start;
+  grid-template-columns:minmax(224px,272px) minmax(288px,1fr) minmax(276px,336px)
+}
+.rk-col{min-width:0;display:flex;flex-direction:column;gap:var(--sp-3)}
+
+/* 左：筛选 + 列表 */
+.rk-filters{display:flex;flex-direction:column;gap:var(--sp-2);padding:var(--sp-3);border-bottom:1px solid var(--line)}
+.rk-filters .row{gap:var(--sp-2)}
+.rk-filters .ipt,.rk-filters .sel{height:30px;font-size:var(--fs-12)}
+
+.rk-list{
+  max-height:min(68vh,720px);overflow:auto;overscroll-behavior:contain;
+  padding:6px;display:flex;flex-direction:column;gap:2px
+}
+.rk-row{
+  display:grid;grid-template-columns:30px minmax(0,1fr) auto;align-items:center;gap:var(--sp-2);
+  padding:5px 6px;cursor:pointer;border:0;background:none;text-align:left;width:100%;
+  border-left:2px solid transparent;color:var(--tx-1);
+  transition:background var(--t-fast) var(--ease),border-color var(--t-fast) var(--ease),color var(--t-fast) var(--ease)
+}
+.rk-row:hover{background:var(--w-a03);color:var(--tx-0)}
+.rk-row.is-on{background:var(--gold-a06);border-left-color:var(--gold);color:var(--tx-0)}
+.rk-row:focus-visible{outline:none;background:var(--w-a06);box-shadow:inset 0 0 0 1px var(--gold-a40)}
+.rk-thumb.plate{width:30px;height:40px}
+.rk-row-n{font-size:var(--fs-12);line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rk-row-y{font-family:var(--font-num);font-size:var(--fs-11);color:var(--tx-2);letter-spacing:.04em}
+.rk-row.is-on .rk-row-y{color:var(--gold)}
+.rk-more{padding:var(--sp-2);display:flex;justify-content:center}
+
+/* 中：立绘台 —— 暗底/渐变底光/金细框归 base.css 的 .plate，这里只管槽位尺寸与内容 */
+.rk-stage{padding:var(--sp-3)}
+.rk-art.plate{aspect-ratio:3/4;width:100%}
+.rk-art.is-swap img{animation:rk-art-in var(--t-slow) var(--ease) both}
+/* 极淡网格。z-index:-1 靠 .plate 的 isolation 兜住：画在板底光之上、主体之下，
+   正好只从 contain 让出的留白里透出来。 */
+.rk-grid-tex{
+  position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background-image:
+    linear-gradient(var(--w-a03) 1px,transparent 1px),
+    linear-gradient(90deg,var(--w-a03) 1px,transparent 1px);
+  background-size:34px 34px;background-position:center
+}
+.rk-stage-meta{display:flex;flex-direction:column;gap:6px;padding-top:var(--sp-3)}
+.rk-stage-meta .row{gap:var(--sp-2);flex-wrap:wrap}
+.rk-forms-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  font-family:var(--font-num);font-size:var(--fs-11);letter-spacing:.14em;color:var(--gold-hi)
+}
+.rk-forms-badge b{font-size:var(--fs-14);font-weight:600}
+
+/* 右：资料面板 */
+.rk-facts{display:flex;flex-direction:column;gap:0;margin:0}
+.rk-fact{
+  display:grid;grid-template-columns:5.4em minmax(0,1fr);gap:var(--sp-2);
+  padding:7px 0;border-bottom:1px solid rgba(42,47,58,.55);font-size:var(--fs-12)
+}
+.rk-fact:last-child{border-bottom:0}
+.rk-fact dt{color:var(--tx-2);letter-spacing:.12em;margin:0}
+.rk-fact dd{color:var(--tx-0);min-width:0;overflow-wrap:anywhere;margin:0}
+.rk-fact dd em{font-style:normal;color:var(--tx-2);font-size:var(--fs-11);margin-left:6px}
+.rk-fact.is-miss v{color:var(--tx-2)}
+.rk-actions{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2);padding-top:var(--sp-3)}
+.rk-actions .btn{--cut:6px;height:32px;font-size:var(--fs-12);letter-spacing:.08em;justify-content:center}
+.rk-actions .btn[aria-pressed="true"]{--edge:var(--gold);--fill:var(--gold-a12);color:var(--gold-hi)}
+
+/* 数值盒：图鉴里内嵌在右栏，详情里独占一列 */
+.rk-stat{display:flex;flex-direction:column;gap:var(--sp-3);padding-top:var(--sp-3);border-top:1px solid var(--line)}
+.rk-stat-hd{display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap}
+.rk-stat-total{display:flex;align-items:baseline;gap:6px;font-family:var(--font-num);font-variant-numeric:tabular-nums}
+.rk-stat-total b{font-size:var(--fs-26);font-weight:600;color:var(--tx-0);letter-spacing:.02em}
+.rk-stat-total span{font-size:var(--fs-11);letter-spacing:.2em;color:var(--tx-2)}
+.rk-note{
+  font-size:var(--fs-12);color:var(--gold);letter-spacing:.06em;line-height:1.5;
+  padding-left:var(--sp-2);border-left:2px solid var(--gold-a40)
+}
+.rk-stat-cap{font-size:var(--fs-11);letter-spacing:.18em;color:var(--tx-2)}
+.rk-chars{display:flex;gap:var(--sp-2);overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}
+.rk-char{
+  flex:0 0 auto;width:56px;display:flex;flex-direction:column;align-items:center;gap:3px;
+  background:none;border:0;cursor:pointer;padding:2px;color:var(--tx-2)
+}
+.rk-char img{width:44px;height:58px;object-fit:cover;object-position:top center;background:var(--ink-2)}
+.rk-char span{font-size:9px;line-height:1.15;max-width:56px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rk-char.is-on{color:var(--gold-hi)}
+.rk-char.is-on img{box-shadow:0 0 0 1px var(--gold-a40)}
+
+/* 雷达：复用 .radar 的类，只调尺寸 */
+.rk-radar{max-width:230px}
+
+/* ── 详情：三栏 ────────────────────────────────────────── */
+.rd-grid{
+  display:grid;gap:var(--sp-4);align-items:start;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)
+}
+.rd-col{min-width:0;display:flex;flex-direction:column;gap:var(--sp-3)}
+.rd-card{display:flex;flex-direction:column;gap:var(--sp-2)}
+/* 详情里的三个大图槽位同样交给 .plate，尺寸在此声明 */
+.rd-big.plate{aspect-ratio:3/4;width:100%}
+.rd-big.is-swap img{animation:rk-art-in var(--t-drama) var(--ease) both}
+.rd-cap{font-size:var(--fs-11);letter-spacing:.18em;color:var(--tx-2)}
+.rd-form-name,.rd-gear-name{font-size:var(--fs-16);color:var(--tx-0);letter-spacing:.06em;line-height:1.3}
+.rd-form-lore{font-size:var(--fs-12);color:var(--tx-1);line-height:1.65;max-height:5.2em;overflow:hidden}
+
+/* 形态条 */
+.rd-strip{display:flex;gap:6px;overflow-x:auto;padding:2px 0 6px;scrollbar-width:thin}
+.rd-form{
+  flex:0 0 auto;width:52px;display:flex;flex-direction:column;align-items:center;gap:3px;
+  background:none;border:0;padding:2px;cursor:pointer;color:var(--tx-2);
+  transition:color var(--t-fast) var(--ease)
+}
+.rd-form .plate{width:44px;height:58px}
+.rd-form span{font-size:9px;line-height:1.15;max-width:52px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rd-form:hover{color:var(--tx-0)}
+.rd-form.is-on{color:var(--gold-hi)}
+.rd-form.is-on .plate{box-shadow:0 0 0 1px var(--gold),0 0 0 3px var(--gold-a12)}
+.rd-switch{display:flex;flex-direction:column;gap:var(--sp-2)}
+
+/* 数值面板 */
+.rd-stat{display:flex;flex-direction:column;gap:var(--sp-3)}
+.rd-grade-row{display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap}
+.rd-grade-from{
+  font-family:var(--font-num);font-size:var(--fs-12);letter-spacing:.14em;color:var(--tx-2);
+  display:inline-flex;align-items:center;gap:4px
+}
+.rd-grade-from::after{content:"→";color:var(--gold);opacity:.8}
+.rd-jump{animation:rk-grade-jump var(--t-drama) var(--ease) 1}
+/* 契约给形态切换 600ms 演出，其余动效仍 ≤240ms */
+.rd-stat .bar-fill{transition:width var(--t-drama) var(--ease)}
+.rd-stat .bar-track{height:8px}
+.rd-stat .bars{gap:9px}
+.rd-delta{
+  font-family:var(--font-num);font-size:var(--fs-11);letter-spacing:.04em;
+  margin-left:5px;opacity:0;transition:opacity var(--t) var(--ease)
+}
+.rd-delta.is-on{opacity:1}
+.rd-delta--up{color:var(--gold-hi)}
+.rd-delta--dn{color:var(--red-hi)}
+.rd-totals{display:flex;align-items:baseline;gap:var(--sp-2);font-family:var(--font-num)}
+.rd-totals b{font-size:var(--fs-26);color:var(--tx-0);font-weight:600}
+
+/* 下方：剧情 / 道具 / 同系列 */
+.rd-below{display:grid;gap:var(--sp-4);grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}
+.rd-lore{font-size:var(--fs-13);color:var(--tx-1);line-height:1.85}
+.rd-lore p{margin:0 0 var(--sp-3)}
+.rd-lore p:last-child{margin-bottom:0}
+.rd-lore.is-clip{
+  max-height:11em;overflow:hidden;
+  -webkit-mask-image:linear-gradient(180deg,#000 62%,transparent);
+  mask-image:linear-gradient(180deg,#000 62%,transparent)
+}
+.rd-fold{
+  margin-top:var(--sp-2);background:none;border:0;padding:0;cursor:pointer;
+  font-size:var(--fs-11);letter-spacing:.18em;color:var(--gold);display:inline-flex;align-items:center;gap:6px
+}
+.rd-fold:hover{color:var(--gold-hi)}
+.rd-items{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:var(--sp-2)}
+.rd-item{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0}
+.rd-item .plate{width:100%;aspect-ratio:1/1}
+.rd-item span{font-size:9px;color:var(--tx-2);line-height:1.15;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rd-more{display:flex;gap:var(--sp-2);overflow-x:auto;padding:2px 0 6px;scrollbar-width:thin}
+.rd-more-item{
+  flex:0 0 auto;width:78px;display:flex;flex-direction:column;gap:3px;
+  background:none;border:0;padding:0;cursor:pointer;text-align:left;color:var(--tx-1)
+}
+.rd-more-item .plate{width:78px;height:104px}
+.rd-more-item span{
+  font-size:var(--fs-11);line-height:1.2;overflow:hidden;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical
+}
+.rd-more-item:hover{color:var(--gold-hi)}
+
+/* ── 关键帧 ────────────────────────────────────────────── */
+@keyframes rk-art-in{
+  from{opacity:0;transform:translateY(10px) scale(.994)}
+  to{opacity:1;transform:none}
+}
+@keyframes rk-grade-jump{
+  0%{transform:scale(.84);box-shadow:0 0 0 0 var(--gold-a40)}
+  45%{transform:scale(1.08);box-shadow:0 0 0 7px rgba(201,162,39,0)}
+  100%{transform:none}
+}
+
+/* ── 响应式 ────────────────────────────────────────────── */
+@media (max-width:1180px){
+  .rk-grid{grid-template-columns:minmax(200px,240px) minmax(0,1fr)}
+  .rk-col--info{grid-column:1/-1}
+  .rd-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .rd-col--stat{grid-column:1/-1}
+  .rd-below{grid-template-columns:1fr}
+}
+@media (max-width:820px){
+  .rk-grid{grid-template-columns:1fr}
+  .rk-list{max-height:46vh}
+  .rd-grid{grid-template-columns:1fr}
+  .rd-big,.rk-art{aspect-ratio:4/5}
+}
+/* 判定条形多一格差值列：base 的三列放不下 ▲/▼ */
+.rd-stat .bar-row{grid-template-columns:2.6em minmax(0,1fr) 2.2em 2.6em}
+/* 资料行内的小替代位图（如未收录的变身器拿道具首项占位） */
+.rk-mini{width:26px;height:34px;object-fit:cover;background:var(--ink-2);margin-right:6px;display:inline-block;vertical-align:-10px}
