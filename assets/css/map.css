@@ -399,9 +399,9 @@
 /* ── 种族：46 行名册（3 / 2 / 1 栏，默认折叠）─────────────── */
 .race-grid{display:block;columns:3;column-gap:32px;counter-reset:race}
 .race-card{
-  display:grid;grid-template-columns:26px minmax(0,1fr);
+  display:grid;grid-template-columns:26px 34px minmax(0,1fr);
   align-items:center;gap:8px;
-  width:100%;height:40px;padding:0 8px;
+  width:100%;height:46px;padding:0 8px;
   background:none;border:0;border-bottom:1px solid rgba(42,47,58,.55);
   break-inside:avoid;text-align:left;
   transition:background var(--t-fast) var(--ease),box-shadow var(--t-fast) var(--ease)
@@ -414,6 +414,8 @@
 }
 .race-card:hover{background:var(--gold-a06);box-shadow:inset 2px 0 0 var(--gold)}
 .race-card:focus-visible{outline:1px solid var(--gold-hi);outline-offset:-2px;background:var(--gold-a06)}
+.race-fig{display:block;width:34px;height:38px;overflow:hidden;background:#0b0d12;border:1px solid rgba(42,47,58,.5)}
+.race-fig img{display:block;width:100%;height:100%;object-fit:contain}
 .race-tx{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;gap:8px;min-width:0}
 .race-name{
   font-size:13px;font-weight:500;letter-spacing:.02em;color:var(--tx-0);
