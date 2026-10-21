@@ -46,15 +46,21 @@
     }
   }
 
+  /* 有些浏览器允许不静音自动播放，但 AudioContext 仍是 suspended：
+     那样声音会被挂在挂起的上下文里（画面有、声音没有）。任何一次点击/按键都补一次 resume。 */
+  function resumeAudio() {
+    if (audio.ok && audio.ctx && audio.ctx.state === 'suspended') {
+      try { audio.ctx.resume(); } catch (e) {}
+    }
+  }
+
   function setSound(on) {
     soundOn = !!on;
     if (!video) return;
     video.muted = !soundOn;
     video.volume = 1;
-    if (audio.ok && audio.ctx) {
-      if (audio.ctx.state === 'suspended') { try { audio.ctx.resume(); } catch (e) {} }
-      audio.gain.gain.value = soundOn ? GAIN : 0;
-    }
+    resumeAudio();
+    if (audio.ok && audio.gain) audio.gain.gain.value = soundOn ? GAIN : 0;
     var btn = wrap && wrap.querySelector('[data-sound]');
     if (btn) {
       btn.setAttribute('aria-pressed', soundOn ? 'true' : 'false');
@@ -147,6 +153,8 @@
 
     doc.documentElement.classList.add('kr-intro-lock');
     doc.body.appendChild(wrap);
+    doc.addEventListener('pointerdown', resumeAudio, true);
+    doc.addEventListener('keydown', resumeAudio, true);
 
     setSound(true);
     if (fromStart) { try { video.currentTime = 0; } catch (e) {} }
