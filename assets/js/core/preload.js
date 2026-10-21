@@ -4,7 +4,7 @@
   'use strict';
 
   var KEY = 'kr:pre';
-  var DUR = 2600;          // 接入动画时长
+  var DUR = 2300;          // 接入动画时长
   var OUT = 520;           // 出场时长
 
   function skipped() {
@@ -92,6 +92,8 @@
       else finish(el, resolveDone);
     }
     global.requestAnimationFrame(tick);
+    // 兜底：后台标签页/重负载时 rAF 会被节流，用墙钟保证一定收场
+    global.setTimeout(function () { if (!done) finish(el, resolveDone); }, DUR + 700);
   }
 
   function start() {
