@@ -95,7 +95,7 @@
     }
 
     el.innerHTML =
-      '<video class="kr-intro__v" playsinline preload="auto" aria-hidden="true"></video>' +
+      '<video class="kr-intro__v" playsinline preload="metadata" aria-hidden="true"></video>' +
       '<div class="kr-intro__bar">' +
       '<div class="kr-intro__srcs" role="group" aria-label="选择开场影像">' + chips + '</div>' +
       '<button class="kr-intro__btn" type="button" data-sound aria-pressed="true">声音 开</button>' +
