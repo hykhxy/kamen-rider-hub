@@ -136,6 +136,8 @@
 @media (max-width:560px){
   .gate--main .gate-lbl{font-size:17px;letter-spacing:.2em}
   .home-colophon{font-size:10.5px;letter-spacing:.08em}
+  /* 58px 宽的立绘放不下「名字 + 年份」，年份让位，名字至少留两个字 */
+  .hero-cap i{display:none}
 }
 
 @media (prefers-reduced-motion:reduce){

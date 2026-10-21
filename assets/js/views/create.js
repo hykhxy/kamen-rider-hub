@@ -1017,7 +1017,7 @@
 
     function setText() {
       var av = currentAvatar();
-      var st = currentStat();
+      // 不读 KR.stat：数值/评级是引擎算出来的，不属于「用户填写的设定」（05 §2.3 末）
       var w = currentWork();
       var tl = (KR.WORLD && KR.WORLD.timeline) || [];
       var t = S.eraIdx >= 0 ? tl[S.eraIdx] : null;
@@ -1042,7 +1042,8 @@
       } else {
         L.push('化身方式：化身骑士');
         L.push('化身来源：' + modeLabel(S.mode));
-        L.push('化身骑士：' + dash(av.name, '未选'));
+        // 原创走 S.custom.name（空则「未选」）；原著 / 抽卡走解析后的骑士名
+        L.push('化身骑士：' + (S.mode === 'custom' ? dash(S.custom.name, '未选') : dash(av.name, '未选')));
         if (S.mode === 'custom') {
           L.push('形态名：' + dash(S.custom.form));
           L.push('形态数：' + clampNum(S.custom.formCount, 1, 12));
@@ -1117,6 +1118,7 @@
         title: cfg.title,
         body: body,
         onClose: function () {
+          if (offTab) offTab();
           var back = cfg.back ? document.querySelector(cfg.back) : null;
           if (back) { try { back.focus(); } catch (e) {} }
         }
@@ -1124,6 +1126,19 @@
 
       var dlg = handle && handle.node ? handle.node.querySelector('.modal-dialog') : null;
       if (dlg) dlg.setAttribute('aria-describedby', 'crt-copy-hint');
+
+      // KR.modal 的 × 在 DOM 里先于正文，Tab 从 textarea 出去会直接逃到弹窗后面的页面。
+      // 这里补一个三格循环：全选 → textarea → ×，不碰共享的 modal 结构。
+      var xBtn = dlg ? dlg.querySelector('.modal-x') : null;
+      var seq = xBtn ? [allBtn, txa, xBtn] : [allBtn, txa];
+      var offTab = KRD.on(document, 'keydown', function (ev) {
+        if (ev.key !== 'Tab') return;
+        var at = seq.indexOf(document.activeElement);
+        if (at < 0) return;
+        ev.preventDefault();
+        var next = (at + (ev.shiftKey ? -1 : 1) + seq.length) % seq.length;
+        try { seq[next].focus(); } catch (e) {}
+      });
 
       var TOTAL = txa.value.length;
 

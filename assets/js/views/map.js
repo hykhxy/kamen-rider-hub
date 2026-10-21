@@ -306,6 +306,20 @@
       for (var m = 0; m < list.length; m++) xs[list[m]] += (m - (list.length - 1) / 2) * 46;
     }
 
+    // 保序最小间距松弛：同年错位后可能与相邻年份贴得过近（L1 曾到 22.6 SVG，
+    // 视觉上两个圆环会互相压住）。按 x 升序把过近的后者右推，顺序与编号不变。
+    var MIN_GAP = 58;
+    var ord = [];
+    for (i = 0; i < n; i++) ord.push(i);
+    ord.sort(function (a, b) { return xs[a] - xs[b] || a - b; });
+    for (var q = 1; q < ord.length; q++) {
+      var prevX = xs[ord[q - 1]];
+      if (xs[ord[q]] - prevX < MIN_GAP) xs[ord[q]] = prevX + MIN_GAP;
+    }
+    var maxX = 0;
+    for (i = 0; i < n; i++) if (xs[i] > maxX) maxX = xs[i];
+    if (maxX > W - padR) { W = Math.ceil(maxX + padR); usable = Math.max(1, W - padL - padR); }
+
     function axisY(x) {
       var t = clamp((x - padL) / usable, 0, 1);
       return MAP_H * 0.5 + Math.sin(t * Math.PI * 2.0) * 74 + Math.sin(t * Math.PI * 5.1) * 24;

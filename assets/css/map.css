@@ -557,7 +557,7 @@
   .map-panel .panel-ft .btn-block{min-height:44px}
 
   /* 年表：一条被切成 7 段的横滑尺，保留横向隐喻 */
-  .map-arch{margin-top:32px;padding-top:22px;gap:28px}
+  .map-arch{margin-top:32px;padding-top:22px;padding-bottom:64px;gap:28px}
   .chrono-track{
     display:flex;gap:0;overflow-x:auto;overscroll-behavior-x:contain;
     scroll-snap-type:x mandatory;padding-bottom:2px;
