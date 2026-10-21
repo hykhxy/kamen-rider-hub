@@ -430,3 +430,27 @@ html.kr-intro-lock .kr-replay{display:none}
 }
 .kr-intro__hint[hidden]{display:none}
 @media (max-width:560px){ .kr-intro__hint{left:12px;bottom:12px;font-size:11px;padding:6px 10px} }
+
+/* 开场影像：片源切换（01 原创 / 02 全平成 MAD） */
+.kr-intro__srcs{display:flex;gap:6px;margin-right:4px}
+.kr-intro__src{
+  display:inline-flex;align-items:center;gap:6px;
+  height:44px;padding:0 14px;cursor:pointer;
+  background:rgba(6,7,10,.66);color:#a9a292;
+  border:1px solid rgba(201,162,39,.30);
+  font-family:inherit;font-size:12px;letter-spacing:.1em;
+  clip-path:polygon(0 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%);
+  transition:background .18s ease,border-color .18s ease,color .18s ease
+}
+.kr-intro__src i{font-style:normal;font-family:var(--font-num,ui-monospace,monospace);font-size:10.5px;color:#8a7434}
+.kr-intro__src:hover{border-color:rgba(231,201,100,.7);color:#e9e1ce}
+.kr-intro__src[aria-pressed="true"]{
+  background:rgba(201,162,39,.24);border-color:#e7c964;color:#fff
+}
+.kr-intro__src[aria-pressed="true"] i{color:#e7c964}
+.kr-intro__src:focus-visible{outline:2px solid #e7c964;outline-offset:2px}
+@media (max-width:700px){
+  .kr-intro__srcs{position:absolute;left:12px;top:12px;margin:0}
+  .kr-intro__src{height:34px;padding:0 10px;font-size:11px}
+  .kr-intro__bar{top:12px;right:12px}
+}
