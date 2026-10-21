@@ -370,7 +370,7 @@ html.kr-intro-lock{overflow:hidden}
   opacity:1;transition:opacity .38s var(--ease,ease)
 }
 .kr-intro.is-out{opacity:0;pointer-events:none}
-.kr-intro__v{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
+.kr-intro__v{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
 .kr-intro__bar{position:absolute;top:max(18px,env(safe-area-inset-top));right:max(18px,env(safe-area-inset-right));
   z-index:2;display:flex;gap:10px}
 .kr-intro__skip{
@@ -461,3 +461,27 @@ html.kr-intro-lock .kr-replay{display:none}
   background:linear-gradient(180deg,rgba(0,0,0,.66),rgba(0,0,0,.28) 52%,transparent);
 }
 .kr-intro__bar{z-index:3}
+
+/* 开场：竖屏/窄屏适配 —— 全片 contain，按钮分两行，不压画面关键区域 */
+@media (max-width:700px){
+  .kr-intro__bar{left:10px;right:10px;top:max(10px,env(safe-area-inset-top));gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .kr-intro__srcs{order:1;width:100%;justify-content:flex-end;margin:0}
+  .kr-intro__src{height:32px;padding:0 9px;font-size:10.5px;letter-spacing:.06em}
+  .kr-intro__src i{font-size:9.5px}
+  .kr-intro__btn{height:34px;padding:0 11px;font-size:11.5px}
+  .kr-intro__skip{height:34px;padding:0 12px;font-size:11.5px}
+  .kr-intro__cta{bottom:auto;top:50%;transform:translate(-50%,-50%);font-size:13px;padding:12px 20px}
+  .kr-intro__hint{display:none}
+}
+/* 中央「开启声音」 */
+.kr-intro__cta{
+  position:absolute;left:50%;bottom:56px;transform:translateX(-50%);z-index:4;
+  display:inline-flex;align-items:center;gap:8px;
+  padding:12px 22px;cursor:pointer;
+  background:rgba(6,7,10,.86);color:#f6eeda;border:1px solid rgba(231,201,100,.9);
+  font-family:inherit;font-size:14px;font-weight:600;letter-spacing:.12em;
+  box-shadow:0 6px 28px rgba(0,0,0,.6);
+  clip-path:polygon(0 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%)
+}
+.kr-intro__cta:hover{background:rgba(201,162,39,.28);color:#fff}
+.kr-intro__cta[hidden]{display:none}
