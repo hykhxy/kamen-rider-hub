@@ -99,6 +99,7 @@
       '<div class="kr-intro__bar">' +
       '<div class="kr-intro__srcs" role="group" aria-label="选择开场影像">' + chips + '</div>' +
       '<button class="kr-intro__btn" type="button" data-sound aria-pressed="true">声音 开</button>' +
+      '<button class="kr-intro__btn" type="button" data-fs>全屏</button>' +
       '<button class="kr-intro__btn" type="button" data-replay>回放</button>' +
       '<button class="kr-intro__skip" type="button">跳过 <span aria-hidden="true">›</span></button>' +
       '</div>' +
@@ -174,6 +175,14 @@
       ev.stopPropagation();
       setSound(!soundOn);
       if (soundOn) { try { var p = video.play(); if (p && p.catch) p.catch(function () {}); } catch (e) {} }
+    });
+    wrap.querySelector('[data-fs]').addEventListener('click', function (ev) {
+      ev.stopPropagation();
+      try {
+        if (doc.fullscreenElement) { doc.exitFullscreen(); }
+        else if (wrap.requestFullscreen) { wrap.requestFullscreen(); }
+        else if (video.webkitEnterFullscreen) { video.webkitEnterFullscreen(); }
+      } catch (e) {}
     });
     wrap.querySelector('[data-replay]').addEventListener('click', function (ev) {
       ev.stopPropagation();
