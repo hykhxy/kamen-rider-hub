@@ -53,7 +53,7 @@
   document.documentElement.classList.add('kr-pre-lock');
   var num = el.querySelector('[data-num]'), bar = el.querySelector('[data-bar]'),
       arc = el.querySelector('.kr-pre__arc'), ph = el.querySelector('[data-phase]'),
-      t0 = Date.now(), DUR = 2300, canSkip = false;
+      t0 = Date.now(), DUR = 2000, canSkip = false;
   setTimeout(function () { canSkip = true; el.classList.add('is-ready'); }, 650);
   document.addEventListener('click', function () { if (canSkip) end(); });
   document.addEventListener('keydown', function (e) { if (canSkip && e.key === 'Escape') end(); });
