@@ -26,7 +26,8 @@
     { key: 'game', href: '#/game', label: '关卡', no: '02', match: ['map'] },
     { key: 'roster', href: '#/roster', label: '图鉴', no: '03', match: ['roster', 'rider'] },
     { key: 'gacha', href: '#/gacha', label: '抽卡', no: '04', match: ['gacha'] },
-    { key: 'archive', href: '#/archive', label: '图库', no: '05', match: ['codex'] }
+    { key: 'archive', href: '#/archive', label: '图库', no: '05', match: ['codex'] },
+    { key: 'create', href: '#/create', label: '创造', no: '06', match: ['create'] }
   ];
 
   var EMBLEM =
