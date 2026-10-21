@@ -987,6 +987,8 @@
     var sub = KRH('div.map-sub', {}, metaLine, notesBox, desc);
 
     var stage = KRH('div.map-stage');
+    // 窄屏横向图纸的最小画布宽：节点越多给得越宽，保证可读（不够就左右拖）
+    stage.style.setProperty('--mw', Math.max(980, S.nodes.length * 64) + 'px');
     var canvas = KRH('div.map-canvas');
     stage.appendChild(canvas);
 
@@ -1207,6 +1209,18 @@
       }
     }
 
+    // 窄屏横向图纸：把选中节点滚到可视区中间（替换掉纵向轴的整页滚动）
+    function revealNodeH(wid) {
+      if (!S.narrow || !canvas) return;
+      var g = canvas.querySelector('g[data-wid="' + wid + '"]');
+      var stage = el.querySelector('.map-stage');
+      if (!g || !stage) return;
+      var gb = g.getBoundingClientRect(), sb = stage.getBoundingClientRect();
+      var target = stage.scrollLeft + (gb.left - sb.left) + gb.width / 2 - sb.width / 2;
+      try { stage.scrollTo({ left: Math.max(0, target), behavior: 'smooth' }); }
+      catch (e) { stage.scrollLeft = Math.max(0, target); }
+    }
+
     function selectNode(wid, fromPointer) {
       if (!wid) return;
       S.selId = wid;
@@ -1216,7 +1230,7 @@
       }
       paintSelection();
       if (S.view !== 'overview') applyView();
-      if (S.narrow) revealRow(wid, true);
+      if (S.narrow) revealNodeH(wid);
       else if (fromPointer) revealPanel();
     }
 
@@ -1272,9 +1286,9 @@
     function paintCanvas() {
       S.narrow = isNarrow();
       S.nodes = S.levels[S.level].nodes;
-      S.geo = S.narrow ? vGeometry(S.nodes) : geometry(S.nodes);
+      S.geo = geometry(S.nodes);   // 手机也用横向图纸（可左右拖动），与桌面同一套排布
       KRD.clear(canvas);
-      canvas.appendChild(S.narrow ? buildAxis(S.nodes, S.geo) : buildStage(S.nodes, S.geo));
+      canvas.appendChild(buildStage(S.nodes, S.geo));
 
       if (S.narrow) {
         canvas.style.width = '100%';
