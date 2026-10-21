@@ -55,6 +55,8 @@
     }
     var hint = wrap.querySelector('.kr-intro__hint');
     if (hint) hint.hidden = !!soundOn;
+    var cta = wrap.querySelector('[data-cta]');
+    if (cta) cta.hidden = !!soundOn;
     var chips = wrap.querySelectorAll('[data-src]');
     for (var i = 0; i < chips.length; i++) {
       chips[i].setAttribute('aria-pressed', String(Number(chips[i].getAttribute('data-src')) === cur));
@@ -100,6 +102,7 @@
       '<button class="kr-intro__btn" type="button" data-replay>回放</button>' +
       '<button class="kr-intro__skip" type="button">跳过 <span aria-hidden="true">›</span></button>' +
       '</div>' +
+      '<button class="kr-intro__cta" type="button" data-cta hidden>🔊 点击开启声音</button>' +
       '<p class="kr-intro__hint" hidden>浏览器拦了带声音的自动播放 · 点画面或「声音」开启</p>';
     return el;
   }
@@ -161,6 +164,12 @@
       })(chips[c]);
     }
 
+    var cta = wrap.querySelector('[data-cta]');
+    if (cta) cta.addEventListener('click', function (ev) {
+      ev.stopPropagation();
+      setSound(true);
+      try { var p = video.play(); if (p && p.catch) p.catch(function () {}); } catch (e) {}
+    });
     wrap.querySelector('[data-sound]').addEventListener('click', function (ev) {
       ev.stopPropagation();
       setSound(!soundOn);
