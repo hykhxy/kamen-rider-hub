@@ -572,12 +572,16 @@ html.kr-pre-lock{overflow:hidden}
 .kr-pre__verse p{margin:0;overflow:hidden}
 .kr-pre__verse span{
   display:block;font-size:16px;letter-spacing:.22em;color:#efe7d3;
-  transform:translateY(120%);opacity:0;
-  animation:krVerse .9s cubic-bezier(.2,.7,.2,1) forwards;
+  opacity:1;transform:none;
   text-shadow:0 0 22px rgba(201,162,39,.20);
+  animation:krVerseGlow 3.2s ease-in-out infinite;
 }
-.kr-pre__verse p:first-child span{animation-delay:.55s}
-.kr-pre__verse p:last-child span{animation-delay:1.05s;color:#c6bfae;font-size:14px;letter-spacing:.26em}
+@keyframes krVerseGlow{
+  0%,100%{text-shadow:0 0 16px rgba(201,162,39,.16)}
+  50%{text-shadow:0 0 30px rgba(231,201,100,.42)}
+}
+.kr-pre__verse p:first-child span{animation-delay:.2s}
+.kr-pre__verse p:last-child span{animation-delay:.9s;color:#c6bfae;font-size:14px;letter-spacing:.26em}
 @keyframes krVerse{to{transform:translateY(0);opacity:1}}
 
 .kr-pre__hint{margin:0;font-size:10px;letter-spacing:.3em;color:#4f5550;opacity:0;animation:krHint .5s .9s ease forwards}
