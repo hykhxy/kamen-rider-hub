@@ -6,7 +6,6 @@
   var KRD = global.KRD;
   var KRH = global.KRH;
   var KRIMG = global.KRIMG;
-  var KRSTORE = global.KRSTORE;
 
   function Q() { return KR.quest; }
   function clampNum(v, lo, hi) { var n = Number(v); if (!isFinite(n)) n = lo; return n < lo ? lo : (n > hi ? hi : n); }
@@ -643,7 +642,7 @@
         type: 'button', 'data-act': 'copy-all'
       }, '复制全部设定'),
       KRH('div.crt-card-row', {},
-        // 05 §1.1：唯一把内容落进 localStorage 的入口，删了 KR.restore() 永远读到空
+        // 底栏只剩两个复制：不再提供手动存档入口（存档能力仍在 gacha 侧 + boot 的 KR.restore()）
         KRH('button.btn.btn-ghost.btn-sm', { type: 'button', 'data-act': 'copy-json' }, '复制 JSON')
       )
     );
@@ -1184,18 +1183,6 @@
       return handle;
     }
 
-    function storeCharacter() {
-      var rec = cardData();
-      KR.state.character = rec;
-      var ok = true;
-      if (KRSTORE) ok = KRSTORE.set('character', rec);
-      if (KR.save) KR.save();
-      if (KR.toast) {
-        KR.toast(ok ? ('已存入本机 · ' + (rec.name || '未命名')) : '本机存储被禁用 · 仅本次有效', ok ? 'ok' : 'err');
-      }
-      return rec;
-    }
-
     function copyAll() {
       var weak = !String(S.name || '').trim() && !String(S.looksText || '').trim() && !String(S.personaText || '').trim();
       showCopyModal({
@@ -1222,7 +1209,6 @@
       if (!btn) return;
       var act = btn.getAttribute('data-act');
       if (act === 'copy-all') copyAll();
-      else if (act === 'store') storeCharacter();
       else if (act === 'copy-json') copyJson();
     });
 
