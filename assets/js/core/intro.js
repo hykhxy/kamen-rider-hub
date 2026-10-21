@@ -1,18 +1,41 @@
-// owner: lead — 开场影像：全屏播放、可跳过、可回放、带声音提示。
-// 音量已烘焙进视频文件（loudnorm I=-12 LUFS，比素材原始 -35dB 提高约 20dB），
-// 页面侧不再接管音频链路：不建 AudioContext、不接 MediaElementSource。
-// 原因：MediaElementSource 会把声音挂到 AudioContext 上，上下文 suspended 时画面正常但完全没声，
-// 这是「看着在播却没声音」最常见的来源。这里只控制 muted 与 volume=1。
+// owner: lead — 开场影像：两段片源可切换、可跳过、可回放、带声音提示。
+// 音量已烘焙进视频文件（loudnorm），页面侧不接管音频链路：不建 AudioContext、
+// 不接 MediaElementSource —— 上下文被挂起时会出现「画面在播、完全没声」。
 (function (global, doc) {
   'use strict';
 
-  var VIDEO = 'assets/video/opening.mp4?v=20261021b';   // 换版本号避开旧缓存（旧文件音量只有 -35dB）
-  var POSTER = 'assets/video/opening.jpg';
+  var SOURCES = [
+    {
+      id: 'v1', no: '01', label: '原创骑士',
+      src: 'assets/video/opening.mp4?v=20261021b',
+      poster: 'assets/video/opening.jpg'
+    },
+    {
+      id: 'v2', no: '02', label: '全平成 MAD',
+      src: 'assets/video/opening2.mp4?v=1',
+      poster: 'assets/video/opening2.jpg'
+    }
+  ];
   var KEY = 'kr:intro';
+  var KEY_SRC = 'kr:intro.src';
 
   var wrap = null;
   var video = null;
   var soundOn = true;
+  var cur = 0;
+
+  function readChoice() {
+    try {
+      var v = global.localStorage.getItem(KEY_SRC);
+      var i = Number(v);
+      if (i >= 0 && i < SOURCES.length) return i;
+    } catch (e) {}
+    return 0;
+  }
+
+  function saveChoice(i) {
+    try { global.localStorage.setItem(KEY_SRC, String(i)); } catch (e) {}
+  }
 
   function skipRequested() {
     if (/[?&]nointro=1/.test(global.location.search)) return true;
@@ -23,23 +46,38 @@
     try { global.sessionStorage.setItem(KEY, 'done'); } catch (e) {}
   }
 
-  function paintSound() {
-    var btn = wrap && wrap.querySelector('[data-sound]');
-    if (btn) {
-      btn.setAttribute('aria-pressed', soundOn ? 'true' : 'false');
-      btn.textContent = soundOn ? '声音 开' : '声音 关';
+  function paint() {
+    if (!wrap) return;
+    var snd = wrap.querySelector('[data-sound]');
+    if (snd) {
+      snd.setAttribute('aria-pressed', soundOn ? 'true' : 'false');
+      snd.textContent = soundOn ? '声音 开' : '声音 关';
     }
-    var hint = wrap && wrap.querySelector('.kr-intro__hint');
+    var hint = wrap.querySelector('.kr-intro__hint');
     if (hint) hint.hidden = !!soundOn;
+    var chips = wrap.querySelectorAll('[data-src]');
+    for (var i = 0; i < chips.length; i++) {
+      chips[i].setAttribute('aria-pressed', String(Number(chips[i].getAttribute('data-src')) === cur));
+    }
   }
 
   function setSound(on) {
     soundOn = !!on;
+    if (video) { video.muted = !soundOn; video.volume = 1; }
+    paint();
+  }
+
+  function loadSource(i, autoplay) {
+    cur = Math.max(0, Math.min(SOURCES.length - 1, i));
+    saveChoice(cur);
+    var s = SOURCES[cur];
     if (video) {
-      video.muted = !soundOn;
-      video.volume = 1;
+      video.poster = s.poster;
+      video.src = s.src;
+      try { video.load(); } catch (e) {}
+      if (autoplay) { try { video.currentTime = 0; } catch (e) {} play(); }
     }
-    paintSound();
+    paint();
   }
 
   function build() {
@@ -47,10 +85,17 @@
     el.className = 'kr-intro';
     el.setAttribute('role', 'dialog');
     el.setAttribute('aria-label', '开场影像');
+
+    var chips = '';
+    for (var i = 0; i < SOURCES.length; i++) {
+      chips += '<button class="kr-intro__src" type="button" data-src="' + i + '" aria-pressed="false">' +
+        '<i>' + SOURCES[i].no + '</i>' + SOURCES[i].label + '</button>';
+    }
+
     el.innerHTML =
-      '<video class="kr-intro__v" src="' + VIDEO + '" poster="' + POSTER + '" ' +
-      'playsinline preload="auto" aria-hidden="true"></video>' +
+      '<video class="kr-intro__v" playsinline preload="auto" aria-hidden="true"></video>' +
       '<div class="kr-intro__bar">' +
+      '<div class="kr-intro__srcs" role="group" aria-label="选择开场影像">' + chips + '</div>' +
       '<button class="kr-intro__btn" type="button" data-sound aria-pressed="true">声音 开</button>' +
       '<button class="kr-intro__btn" type="button" data-replay>回放</button>' +
       '<button class="kr-intro__skip" type="button">跳过 <span aria-hidden="true">›</span></button>' +
@@ -82,10 +127,9 @@
       var p = video.play();
       if (p && typeof p.catch === 'function') {
         p.catch(function () {
-          // 带声音的自动播放被拦：静音先播，并显示提示
           soundOn = false;
           video.muted = true;
-          paintSound();
+          paint();
           try { video.play().catch(function () {}); } catch (e) {}
         });
       }
@@ -104,6 +148,19 @@
     wrap = build();
     video = wrap.querySelector('.kr-intro__v');
 
+    var chips = wrap.querySelectorAll('[data-src]');
+    for (var c = 0; c < chips.length; c++) {
+      (function (chip) {
+        chip.addEventListener('click', function (ev) {
+          ev.stopPropagation();
+          var i = Number(chip.getAttribute('data-src'));
+          if (i === cur) { try { video.currentTime = 0; } catch (e) {} play(); return; }
+          setSound(true);
+          loadSource(i, true);
+        });
+      })(chips[c]);
+    }
+
     wrap.querySelector('[data-sound]').addEventListener('click', function (ev) {
       ev.stopPropagation();
       setSound(!soundOn);
@@ -119,7 +176,6 @@
       ev.stopPropagation();
       close();
     });
-    // 点画面任意处：没声就开声，有声保持（避免误关）
     wrap.addEventListener('click', function () {
       if (!soundOn) { setSound(true); play(); }
     });
@@ -132,15 +188,16 @@
     doc.documentElement.classList.add('kr-intro-lock');
     doc.body.appendChild(wrap);
 
-    if (fromStart) { try { video.currentTime = 0; } catch (e) {} }
+    cur = readChoice();
+    loadSource(cur, false);
     setSound(true);
+    if (fromStart) { try { video.currentTime = 0; } catch (e) {} }
     play();
   }
 
   function onKey(e) {
     if (!wrap) { doc.removeEventListener('keydown', onKey); return; }
     if (e.key === 'Escape') close();
-    else if (e.key === ' ' && doc.activeElement === doc.body) { e.preventDefault(); open(true); }
   }
 
   function replayPill() {
@@ -158,7 +215,13 @@
     open(false);
   }
 
-  global.KRIntro = { open: function () { open(true); }, close: close };
+  global.KRIntro = {
+    open: function (i) {
+      if (typeof i === 'number') loadSource(i, false);
+      open(true);
+    },
+    close: close
+  };
 
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', start);
   else start();
