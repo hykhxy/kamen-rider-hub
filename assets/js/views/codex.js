@@ -513,32 +513,6 @@
   }
 
   // ── 灯箱 ─────────────────────────────────────────────────
-  function copyPath(p) {
-    var full = IMG().path(p);
-    function ok() { KR.toast('已复制图片路径', 'ok'); }
-    function bad() { KR.toast('复制失败 · ' + full, 'warn', 4200); }
-    function legacy() {
-      try {
-        var ta = document.createElement('textarea');
-        ta.value = full;
-        ta.setAttribute('readonly', '');
-        document.body.appendChild(ta);
-        ta.select();
-        var done = document.execCommand && document.execCommand('copy');
-        document.body.removeChild(ta);
-        if (done) ok(); else bad();
-      } catch (e) { bad(); }
-    }
-    try {
-      var nav = global.navigator;
-      if (nav && nav.clipboard && nav.clipboard.writeText) {
-        nav.clipboard.writeText(full).then(ok, legacy);
-        return;
-      }
-    } catch (e) {}
-    legacy();
-  }
-
   function closeLightbox() {
     if (S && S.lb) {
       var h = S.lb;
@@ -615,8 +589,7 @@
         ['ID', str(rec.i)],
         ['系列', seriesName(rec.s)],
         ['年份', str(rec.y)],
-        ['时代', str(rec.e)],
-        ['路径', str(rec.p)]
+        ['时代', str(rec.e)]
       ];
       for (var i = 0; i < rows.length; i++) {
         dl.appendChild(H('dt', { text: rows[i][0] }));
@@ -625,13 +598,6 @@
       info.appendChild(dl);
 
       var acts = H('div.cx-lb-acts');
-      if (rec.o) {
-        var a = H('a.btn.btn-ghost.btn-sm', { href: str(rec.o), target: '_blank', rel: 'noopener noreferrer' }, '官方页');
-        acts.appendChild(a);
-      }
-      var cp = H('button.btn.btn-ghost.btn-sm', { type: 'button' }, '复制图片路径');
-      cp.addEventListener('click', function () { if (rec.p) copyPath(str(rec.p)); });
-      acts.appendChild(cp);
       info.appendChild(acts);
 
       var nav = H('div.cx-lb-nav');
