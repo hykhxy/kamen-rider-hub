@@ -198,8 +198,12 @@
       if (!soundOn) { setSound(true); play(); }
     });
     video.addEventListener('ended', close);
+    // 片源出错时不要直接清场（切换源时浏览器可能抛一次 abort/error）：
+    // 保留浮层，提示换一段，用户仍能跳过或重试。
     video.addEventListener('error', function () {
-      global.setTimeout(close, 1600);
+      if (!wrap) return;
+      var hint = wrap.querySelector('.kr-intro__hint');
+      if (hint) { hint.hidden = false; hint.textContent = '这段片源没加载出来 · 点上方另一段，或跳过'; }
     });
     doc.addEventListener('keydown', onKey);
 
