@@ -389,3 +389,35 @@ html.kr-intro-lock{overflow:hidden}
 @media (max-width:560px){
   .kr-intro__skip{height:40px;padding:0 14px;font-size:12.5px;letter-spacing:.14em}
 }
+
+/* 开场影像：声音 / 回放 两枚次级按钮 */
+.kr-intro__btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  height:44px;padding:0 16px;cursor:pointer;
+  background:rgba(6,7,10,.72);color:#d9d2c2;
+  border:1px solid rgba(201,162,39,.45);
+  font-family:inherit;font-size:12.5px;letter-spacing:.14em;
+  clip-path:polygon(0 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%);
+  transition:background .18s ease,border-color .18s ease,color .18s ease
+}
+.kr-intro__btn:hover{background:rgba(201,162,39,.18);border-color:#e7c964;color:#fff}
+.kr-intro__btn:focus-visible{outline:2px solid #e7c964;outline-offset:2px}
+.kr-intro__btn[aria-pressed="false"]{color:#8d8574;border-color:rgba(201,162,39,.28)}
+
+/* 关掉开场后的常驻回放入口 */
+.kr-replay{
+  position:fixed;right:20px;bottom:20px;z-index:80;
+  height:34px;padding:0 14px;cursor:pointer;
+  background:rgba(6,7,10,.78);color:#cfc7b4;
+  border:1px solid rgba(201,162,39,.42);
+  font-family:inherit;font-size:11.5px;letter-spacing:.16em;
+  clip-path:polygon(0 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%);
+  opacity:.62;transition:opacity .2s ease,background .2s ease,color .2s ease,border-color .2s ease
+}
+.kr-replay:hover{opacity:1;background:rgba(201,162,39,.2);color:#fff;border-color:#e7c964}
+.kr-replay:focus-visible{opacity:1;outline:2px solid #e7c964;outline-offset:2px}
+html.kr-intro-lock .kr-replay{display:none}
+@media (max-width:560px){
+  .kr-intro__btn{height:38px;padding:0 12px;font-size:11.5px}
+  .kr-replay{right:12px;bottom:12px;height:30px;padding:0 10px;font-size:10.5px}
+}
