@@ -824,6 +824,51 @@
     return sec;
   }
 
+
+  // 种族 → 代表怪人：先用种族的 org 找到作品，再取该作的怪人；找不到就按时代兜底
+  function raceWorkOf(race, W) {
+    var name = str(race.name), works = (W && W.works) || [];
+    for (var i = 0; i < works.length; i++) {
+      var org = str(works[i].org);
+      if (org && (org === name || name.indexOf(org) >= 0 || org.indexOf(name) >= 0)) return works[i];
+    }
+    return null;
+  }
+
+  function raceThumb(race, W) {
+    if (!monstersReady()) return '';
+    var w = raceWorkOf(race, W);
+    var foe = w ? foesOf(w, 1) : [];
+    if (foe.length) return foe[0].p;
+    var all = KR.IMG.monsters || [];
+    var era = w ? str(w.era) : '';
+    var pool = [];
+    for (var i = 0; i < all.length; i++) if (!era || all[i].e === era) pool.push(all[i]);
+    if (!pool.length) pool = all;
+    if (!pool.length) return '';
+    var h = 0, nm = str(race.name);
+    for (var k = 0; k < nm.length; k++) h = (h * 31 + nm.charCodeAt(k)) % 1000003;
+    return pool[h % pool.length].p;
+  }
+
+  function patchRaceImages(grid, W) {
+    if (!grid || !grid.isConnected) return;
+    var imgs = grid.querySelectorAll('img[data-race-img]');
+    for (var i = 0; i < imgs.length; i++) {
+      var card = imgs[i].closest ? imgs[i].closest('.race-card') : null;
+      if (!card) continue;
+      var race = (W.races || [])[Number(card.getAttribute('data-race'))];
+      if (!race) continue;
+      var path = raceThumb(race, W);
+      if (!path) continue;
+      imgs[i].removeAttribute('src');
+      imgs[i].setAttribute('data-kr-img', path);
+      imgs[i].setAttribute('data-kr-thumb', '1');
+      imgs[i].setAttribute('alt', str(race.name) + ' · 怪人');
+    }
+    if (KRIMG) KRIMG.observe(grid);
+  }
+
   function raceModal(race) {
     return function () {
       var box = KRH('div.race-modal');
@@ -840,6 +885,12 @@
       'aria-haspopup': 'dialog', 'aria-label': str(race.name) + ' 全文'
     });
     if (idx === 0) row.setAttribute('class', row.getAttribute('class') + ' race-card--sum');
+    var fig = KRH('span.race-fig');
+    var im = KRH('img.race-img', { alt: '' });
+    im.setAttribute('data-race-img', '1');
+    if (KRIMG) im.src = KRIMG.placeholder('monster');
+    fig.appendChild(im);
+    row.appendChild(fig);
     var tx = KRH('span.race-tx');
     tx.appendChild(KRH('b.race-name', { text: str(race.name) }));
     if (race.base) tx.appendChild(KRH('span.tag.tag--dim.race-base', { text: str(race.base) }));
@@ -875,6 +926,13 @@
     // 折叠按钮必须放在 multicol 容器之外：塞进 .race-grid 会被分栏切走
     sec.appendChild(grid);
     sec.appendChild(more);
+
+    // 怪人索引 362KB：不挡首帧，关卡页挂载后再补缩略图
+    if (monstersReady()) {
+      patchRaceImages(grid, W);
+    } else if (KR.load) {
+      KR.load('data/img-monsters.js').then(function () { patchRaceImages(grid, W); }, function () {});
+    }
     return sec;
   }
 
