@@ -1185,13 +1185,26 @@
 
     function copyAll() {
       var weak = !String(S.name || '').trim() && !String(S.looksText || '').trim() && !String(S.personaText || '').trim();
-      showCopyModal({
-        title: '全部设定 · 手动复制',
-        hint: HINT_SELECTED,
-        text: setText(),
-        note: weak ? '这一份还没有名字和描述，复制出去只有默认值。' : '',
-        back: '[data-act="copy-all"]'
-      });
+      var text = setText();
+      // 先尝试直接写入剪贴板：用户要的是「点一下就能粘贴」
+      function fallback() {
+        showCopyModal({
+          title: '全部设定 · 手动复制',
+          hint: HINT_SELECTED,
+          text: text,
+          note: weak ? '这一份还没有名字和描述，复制出去只有默认值。' : '',
+          back: '[data-act="copy-all"]'
+        });
+      }
+      try {
+        if (global.navigator && navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function () {
+            KR.toast('已复制全部设定 · 直接粘贴即可', 'ok');
+          }, fallback);
+          return;
+        }
+      } catch (e) {}
+      fallback();
     }
 
     function copyJson() {
