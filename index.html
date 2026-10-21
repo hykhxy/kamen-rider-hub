@@ -28,6 +28,47 @@
   </div>
   <div class="kr-pre__bar" aria-hidden="true"><i data-bar></i></div>
 </div>
+<script>
+/* 加载页驱动：内联在首屏，不依赖外部脚本，避免网络等待把开场拖到 4s 之后 */
+(function () {
+  var el = document.getElementById('kr-pre');
+  var done = false, rt;
+  window.KR_PRELOAD = { ready: new Promise(function (r) { rt = r; }) };
+  function skip() {
+    try { if (/[?&]nointro=1/.test(location.search) || sessionStorage.getItem('kr:pre') === 'done') return true; } catch (e) {}
+    return false;
+  }
+  function end() {
+    if (done) return; done = true;
+    try { sessionStorage.setItem('kr:pre', 'done'); } catch (e) {}
+    if (el) {
+      el.classList.add('is-out');
+      document.documentElement.classList.remove('kr-pre-lock');
+      setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 520);
+    }
+    rt();
+  }
+  if (!el) { rt(); return; }
+  if (skip()) { if (el.parentNode) el.parentNode.removeChild(el); rt(); return; }
+  document.documentElement.classList.add('kr-pre-lock');
+  var num = el.querySelector('[data-num]'), bar = el.querySelector('[data-bar]'),
+      arc = el.querySelector('.kr-pre__arc'), ph = el.querySelector('[data-phase]'),
+      t0 = Date.now(), DUR = 2300, canSkip = false;
+  setTimeout(function () { canSkip = true; el.classList.add('is-ready'); }, 650);
+  document.addEventListener('click', function () { if (canSkip) end(); });
+  document.addEventListener('keydown', function (e) { if (canSkip && e.key === 'Escape') end(); });
+  (function tick() {
+    if (done) return;
+    var t = Math.min(1, (Date.now() - t0) / DUR), p = Math.round(t * 100);
+    if (num) num.textContent = ('00' + p).slice(-3);
+    if (bar) bar.style.transform = 'scaleX(' + t + ')';
+    if (arc) arc.style.setProperty('--p', String(t));
+    if (ph) ph.textContent = p < 34 ? '核心同步' : (p < 72 ? '档案校验' : '线路接入');
+    if (t < 1) requestAnimationFrame(tick); else end();
+  })();
+  setTimeout(end, DUR + 900);   // 墙钟兜底
+})();
+</script>
 <div id="boot" class="boot">
   <div class="boot-mark">KAMEN RIDER</div>
   <div class="boot-sub">综合大世界 · 正在接入</div>
@@ -40,7 +81,6 @@
 <noscript><div class="nofx">本页面需要 JavaScript。请用 Edge / Chrome 打开。</div></noscript>
 
 <script src="assets/js/core/dom.js"></script>
-<script src="assets/js/core/preload.js?v=2"></script>
 <script src="assets/js/core/intro.js?v=10"></script>
 <script src="assets/js/core/store.js"></script>
 <script src="assets/js/core/img.js"></script>
