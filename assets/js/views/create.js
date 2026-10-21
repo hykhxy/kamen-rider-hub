@@ -1196,15 +1196,31 @@
           back: '[data-act="copy-all"]'
         });
       }
+      // 老办法兜底：execCommand 在多数桌面/安卓 WebView 里比 clipboard API 更稳
+      function legacyCopy() {
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = text;
+          ta.setAttribute('readonly', '');
+          ta.style.cssText = 'position:fixed;left:-9999px;top:0';
+          document.body.appendChild(ta);
+          ta.select();
+          ta.setSelectionRange(0, ta.value.length);
+          var ok = document.execCommand && document.execCommand('copy');
+          document.body.removeChild(ta);
+          if (ok) { KR.toast('已复制全部设定 · 直接粘贴即可', 'ok'); return true; }
+        } catch (e) {}
+        return false;
+      }
       try {
         if (global.navigator && navigator.clipboard && navigator.clipboard.writeText) {
           navigator.clipboard.writeText(text).then(function () {
             KR.toast('已复制全部设定 · 直接粘贴即可', 'ok');
-          }, fallback);
+          }, function () { if (!legacyCopy()) fallback(); });
           return;
         }
       } catch (e) {}
-      fallback();
+      if (!legacyCopy()) fallback();
     }
 
     function copyJson() {
