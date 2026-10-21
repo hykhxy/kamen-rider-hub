@@ -103,7 +103,7 @@
       '<button class="kr-intro__btn" type="button" data-replay>回放</button>' +
       '<button class="kr-intro__skip" type="button">跳过 <span aria-hidden="true">›</span></button>' +
       '</div>' +
-      '<button class="kr-intro__cta" type="button" data-cta hidden>🔊 点击开启声音</button>' +
+      '<button class="kr-intro__cta" type="button" data-cta hidden>点击开启声音</button>' +
       '<p class="kr-intro__hint" hidden>浏览器拦了带声音的自动播放 · 点画面或「声音」开启</p>';
     return el;
   }
