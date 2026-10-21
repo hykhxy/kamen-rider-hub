@@ -6,7 +6,7 @@
 (function (global, doc) {
   'use strict';
 
-  var VIDEO = 'assets/video/opening.mp4';
+  var VIDEO = 'assets/video/opening.mp4?v=20261021b';   // 换版本号避开旧缓存（旧文件音量只有 -35dB）
   var POSTER = 'assets/video/opening.jpg';
   var KEY = 'kr:intro';
 
