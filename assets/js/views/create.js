@@ -29,6 +29,12 @@
   var S = null;
   var RIDER_INDEX = null;
 
+  // 手动复制弹窗的常驻文案（照抄 05-v2-ux.md §5 文案总表）
+  var HINT_SELECTED = '已全选 · 按 Ctrl + C 复制（Mac 按 ⌘ + C）';
+  var HINT_LOST = '按 Ctrl + C 复制（Mac 按 ⌘ + C）；没选中就先点「全选」';
+  // 45 × '─'，抬头与正文之间的分隔线
+  var RULE = new Array(46).join('─');
+
   function riderIndex() {
     if (RIDER_INDEX) return RIDER_INDEX;
     RIDER_INDEX = {};
@@ -285,7 +291,7 @@
     }
 
     var lede = KRH('p.crt-lede', {
-      text: '六项归档：身份、化身、时间线、援助位。右栏是实时角色卡，保存后写入本地存档。'
+      text: '四项归档：身份、化身、时间线、援助位。右侧是实时角色卡，底栏可以把整份设定复制走。'
     });
     var srcBar = KRH('div.crt-src');
     srcBar.setAttribute('hidden', '');
@@ -634,11 +640,10 @@
     var cardSum = KRH('dl.crt-sum');
     var cardFt = KRH('div.crt-card-ft', {},
       KRH('button.btn.btn-gold.btn-block', {
-        type: 'button', 'data-act': 'save'
-      }, '保存角色'),
+        type: 'button', 'data-act': 'copy-all'
+      }, '复制全部设定'),
       KRH('div.crt-card-row', {},
-        KRH('button.btn.btn-ghost.btn-sm', { type: 'button', 'data-act': 'copy' }, '复制 JSON'),
-        KRH('button.btn.btn-ghost.btn-sm', { type: 'button', 'data-act': 'download' }, '下载 .txt')
+        KRH('button.btn.btn-ghost.btn-sm', { type: 'button', 'data-act': 'copy-json' }, '复制 JSON')
       )
     );
     card.appendChild(KRH('div.crt-card-bd', {}, cardName, cardMeta, cardBars, cardRank, cardSum));
@@ -996,95 +1001,213 @@
       paintCard();
     });
 
-    // ── 角色卡动作 ───────────────────────────────────────
-    function saveCharacter() {
-      var rec = cardData();
-      KR.state.character = rec;
-      if (KRSTORE) KRSTORE.set('character', rec);
-      if (KR.save) KR.save();
-      if (KR.toast) KR.toast('已保存 · ' + (rec.name || '未命名'), 'ok');
-      return rec;
+    // ── 角色卡动作：全部走手动复制弹窗，不碰剪贴板 API ────
+    // 设定文本只装用户填写的字段：身份 → 化身 → 时间线 → 援助。派生的数值与评级不进文本。
+    // 缺省三态：不适用整行省略 / 适用但空着写「未填｜未选」/ 有默认值直接写值。
+    function dash(v, fallback) {
+      var s = String(v == null ? '' : v).replace(/\s+$/, '').replace(/^\s+/, '');
+      return s || (fallback || '未填');
+    }
+
+    function modeLabel(mode) {
+      if (mode === 'gacha') return '抽卡获得';
+      if (mode === 'custom') return '原创自定义';
+      return '原著图鉴';
+    }
+
+    function setText() {
+      var av = currentAvatar();
+      var st = currentStat();
+      var w = currentWork();
+      var tl = (KR.WORLD && KR.WORLD.timeline) || [];
+      var t = S.eraIdx >= 0 ? tl[S.eraIdx] : null;
+      var L = [];
+
+      L.push('假面骑士 · 角色档案');
+      L.push(RULE);
+
+      L.push('【身份】');
+      L.push('姓名：' + dash(S.name));
+      L.push('性别：' + dash(S.gender, '不明'));
+      L.push('外貌倾向：' + (S.looks.length ? S.looks.join('、') : '未选'));
+      L.push('外貌描述：' + dash(S.looksText));
+      L.push('性格四轴：勇气 ' + S.traits.courage + ' / 理性 ' + S.traits.reason +
+        ' / 共情 ' + S.traits.empathy + ' / 纪律 ' + S.traits.discipline);
+      L.push('性格描述：' + dash(S.personaText));
+
+      L.push('');
+      L.push('【化身】');
+      if (S.noAvatar) {
+        L.push('化身方式：不化身 · 人类身份');
+      } else {
+        L.push('化身方式：化身骑士');
+        L.push('化身来源：' + modeLabel(S.mode));
+        L.push('化身骑士：' + dash(av.name, '未选'));
+        if (S.mode === 'custom') {
+          L.push('形态名：' + dash(S.custom.form));
+          L.push('形态数：' + clampNum(S.custom.formCount, 1, 12));
+          L.push('变身器：' + dash(S.custom.belt));
+          L.push('摩托车：' + dash(S.custom.bike));
+          L.push('能力倾向：力 ' + S.custom.w.pow + ' / 速 ' + S.custom.w.spd +
+            ' / 术 ' + S.custom.w.skl + ' / 防 ' + S.custom.w.def);
+        }
+      }
+
+      L.push('');
+      L.push('【时间线】');
+      L.push('纪：' + (t ? (t.era + ' ' + t.range) : '未选'));
+      L.push('作品：' + (w ? (Q().pad2(w.no) + ' ' + w.title + '（' + (Number(S.year) || w.year) + '）') : '未选'));
+      L.push('年份：' + (Number(S.year) ? String(S.year) : '未选'));
+      L.push('舞台：' + (w && w.stage ? String(w.stage) : '未选'));
+      if (S.src) {
+        L.push('来源地点：' + S.src.work + ' · ' + S.src.stage + ' · 节点 ' + Q().pad2(S.src.no));
+      }
+
+      L.push('');
+      L.push('【援助】');
+      var names = [];
+      for (var i = 0; i < S.aids.length; i++) {
+        var c = charById(S.aids[i]);
+        names.push(c ? c.n : S.aids[i]);
+      }
+      L.push('援助（' + names.length + '/3）：' + (names.length ? names.join('、') : '未选'));
+
+      return L.join('\n');
     }
 
     function jsonText() { return JSON.stringify(cardData(), null, 2); }
 
-    function copyJson() {
-      var text = jsonText();
-      var nav = global.navigator;
-      if (nav && nav.clipboard && typeof nav.clipboard.writeText === 'function') {
-        nav.clipboard.writeText(text).then(function () {
-          if (KR.toast) KR.toast('JSON 已复制', 'ok');
-        }, function () { showJsonModal(text); });
-        return;
-      }
-      showJsonModal(text);
-    }
+    // 手动复制弹窗：readonly textarea + 打开即全选 + 常驻「全选」。
+    // 不做自动复制、不调任何剪贴板 API —— 点完没反应的失败体验比不给按钮更糟。
+    function showCopyModal(cfg) {
+      var text = String(cfg.text == null ? '' : cfg.text);
+      var ready = text.length > 0;
+      if (!ready) text = '档案未就绪';
 
-    function showJsonModal(text) {
-      var txa = KRH('textarea.txa.crt-json', { rows: '16' });
-      txa.value = text;
-      var handle = KR.modal({
-        title: '角色卡 JSON',
-        body: KRH('div.crt-json-wrap', {},
-          KRH('p.crt-hint', { text: '（浏览器不给剪贴板权限时，这里是全文；Ctrl+A 全选后复制。）' }),
-          txa
-        )
+      var hint = KRH('p.crt-hint.crt-copy-hint', {
+        id: 'crt-copy-hint', role: 'status', 'aria-live': 'polite',
+        text: ready ? cfg.hint : '档案未就绪 · 关掉这个窗口，等页面加载完再试。'
       });
-      setTimeout(function () { try { txa.focus(); txa.select(); } catch (e) {} }, 30);
+
+      var note = cfg.note
+        ? KRH('p.crt-copy-note', { text: cfg.note })
+        : null;
+
+      var allBtn = KRH('button.btn.btn-ghost.btn-sm.crt-copy-all', { type: 'button' }, '全选');
+      var selTag = KRH('span.crt-copy-sel');
+      var countTag = KRH('span.crt-copy-n', {
+        text: text.split('\n').length + ' 行 · ' + text.length + ' 字'
+      });
+
+      // readonly 而不是 disabled：disabled 不可聚焦、不可选中，整个方案失效
+      var txa = KRH('textarea.crt-copy-txa' + (cfg.mono ? '.crt-copy-txa--mono' : ''), {
+        readonly: true, spellcheck: 'false',
+        'aria-label': cfg.title || '全部设定全文'
+      });
+      txa.value = text;
+
+      var body = KRH('div.crt-copy', {},
+        KRH('div.crt-copy-bar', {}, hint, allBtn),
+        note,
+        KRH('p.crt-copy-count', {}, selTag, countTag),
+        txa
+      );
+
+      var handle = KR.modal({
+        title: cfg.title,
+        body: body,
+        onClose: function () {
+          var back = cfg.back ? document.querySelector(cfg.back) : null;
+          if (back) { try { back.focus(); } catch (e) {} }
+        }
+      });
+
+      var dlg = handle && handle.node ? handle.node.querySelector('.modal-dialog') : null;
+      if (dlg) dlg.setAttribute('aria-describedby', 'crt-copy-hint');
+
+      var TOTAL = txa.value.length;
+
+      function paintSel(start, end) {
+        if (TOTAL > 0 && start === 0 && end === TOTAL) {
+          hint.textContent = HINT_SELECTED;
+          selTag.textContent = '';
+        } else if (start === end) {
+          hint.textContent = HINT_LOST;
+          selTag.textContent = '';
+        } else {
+          if (selTag.textContent === '') hint.textContent = HINT_LOST;
+          selTag.textContent = '已选 ' + (end - start) + ' / ' + TOTAL + ' 字';
+        }
+      }
+
+      function readSel() {
+        var a = 0, b = 0;
+        try { a = txa.selectionStart; b = txa.selectionEnd; } catch (e) { a = b = 0; }
+        paintSel(a, b);
+      }
+
+      function selectAll() {
+        // 三步都写：select() 单独在部分 WebKit 上对 readonly 不生效
+        try {
+          txa.focus();
+          txa.setSelectionRange(0, TOTAL);
+          txa.select();
+          // select() 会把视口滚到选区末尾，弹窗一打开就看到文档屁股；按回开头
+          txa.scrollTop = 0;
+        } catch (e) {}
+        paintSel(0, TOTAL);
+      }
+
+      allBtn.addEventListener('click', selectAll);
+      KRD.on(txa, 'select mouseup keyup', readSel);
+
+      // 晚于 KR.modal 里 dialog 聚焦的 0ms，否则选区会被随后的 focus() 清掉
+      setTimeout(selectAll, 35);
+      // 少数浏览器在选区渲染的下一帧才滚，补一次
+      setTimeout(function () { try { txa.scrollTop = 0; } catch (e) {} }, 120);
       return handle;
     }
 
-    function downloadTxt() {
+    function storeCharacter() {
       var rec = cardData();
-      var lines = [];
-      lines.push('KR-BUREAU / 角色卡');
-      lines.push('姓名：' + (rec.name || '—'));
-      lines.push('性别：' + rec.gender);
-      lines.push('外貌：' + (rec.looks.join('、') || '—'));
-      if (rec.looksText) lines.push('外貌描述：' + rec.looksText);
-      lines.push('性格四轴：勇气 ' + rec.traits.courage + ' / 理性 ' + rec.traits.reason + ' / 共情 ' + rec.traits.empathy + ' / 纪律 ' + rec.traits.discipline);
-      if (rec.persona) lines.push('性格描述：' + rec.persona);
-      lines.push('化身：' + rec.avatar.mode + ' · ' + (rec.avatar.name || '—'));
-      if (rec.avatar.formName) lines.push('形态：' + rec.avatar.formName + '（' + rec.avatar.formCount + ' 段）');
-      if (rec.avatar.belt) lines.push('变身器：' + rec.avatar.belt);
-      if (rec.avatar.bike) lines.push('摩托车：' + rec.avatar.bike);
-      lines.push('时间线：' + (rec.timeline.era || '—') + ' ' + (rec.timeline.eraRange || '') + ' / ' + (rec.timeline.workTitle || '—') + ' / ' + rec.timeline.year);
-      lines.push('舞台：' + (rec.timeline.stage || '—'));
-      if (rec.aids.length) lines.push('援助：' + rec.aids.map(function (a) { return a.n; }).join('、'));
-      if (rec.stat) lines.push('数值：力 ' + rec.stat.pow + ' 速 ' + rec.stat.spd + ' 术 ' + rec.stat.skl + ' 防 ' + rec.stat.def + ' · 总评 ' + rec.stat.total + ' · ' + rec.stat.rank);
-      if (rec.origin) lines.push('来源地点：' + rec.origin.work + ' · ' + rec.origin.stage);
-      lines.push('');
-      lines.push('--- JSON ---');
-      lines.push(JSON.stringify(rec, null, 2));
-
-      var text = lines.join('\r\n');
-      var BlobCtor = global.Blob;
-      var URLCtor = global.URL;
-      if (typeof BlobCtor !== 'function' || !URLCtor || typeof URLCtor.createObjectURL !== 'function') {
-        showJsonModal(text);
-        if (KR.toast) KR.toast('当前环境不支持下载，已改为文本弹窗', 'warn');
-        return;
+      KR.state.character = rec;
+      var ok = true;
+      if (KRSTORE) ok = KRSTORE.set('character', rec);
+      if (KR.save) KR.save();
+      if (KR.toast) {
+        KR.toast(ok ? ('已存入本机 · ' + (rec.name || '未命名')) : '本机存储被禁用 · 仅本次有效', ok ? 'ok' : 'err');
       }
-      var blob = new BlobCtor([text], { type: 'text/plain;charset=utf-8' });
-      var url = URLCtor.createObjectURL(blob);
-      var a = global.document.createElement('a');
-      a.href = url;
-      a.download = 'KR-BUREAU-' + (rec.name || 'character') + '.txt';
-      a.style.display = 'none';
-      global.document.body.appendChild(a);
-      a.click();
-      global.document.body.removeChild(a);
-      setTimeout(function () { URLCtor.revokeObjectURL(url); }, 1200);
-      if (KR.toast) KR.toast('已导出 .txt', 'ok');
+      return rec;
+    }
+
+    function copyAll() {
+      var weak = !String(S.name || '').trim() && !String(S.looksText || '').trim() && !String(S.personaText || '').trim();
+      showCopyModal({
+        title: '全部设定 · 手动复制',
+        hint: HINT_SELECTED,
+        text: setText(),
+        note: weak ? '这一份还没有名字和描述，复制出去只有默认值。' : '',
+        back: '[data-act="copy-all"]'
+      });
+    }
+
+    function copyJson() {
+      showCopyModal({
+        title: '角色卡 JSON · 手动复制',
+        hint: '给工具读的版本，字段结构与本地存档一致。已全选。',
+        text: jsonText(),
+        mono: true,
+        back: '[data-act="copy-json"]'
+      });
     }
 
     KRD.on(cardFt, 'click', function (ev) {
       var btn = ev.target && ev.target.closest ? ev.target.closest('[data-act]') : null;
       if (!btn) return;
       var act = btn.getAttribute('data-act');
-      if (act === 'save') saveCharacter();
-      else if (act === 'copy') copyJson();
-      else if (act === 'download') downloadTxt();
+      if (act === 'copy-all') copyAll();
+      else if (act === 'store') storeCharacter();
+      else if (act === 'copy-json') copyJson();
     });
 
     // ── 联动 ?work=&node= ────────────────────────────────

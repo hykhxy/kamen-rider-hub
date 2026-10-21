@@ -5,8 +5,6 @@
   var KR = global.KR = global.KR || {};
 
   var RAW = 'https://raw.githubusercontent.com/hykhxy/kamen-rider-archive/main/';
-  /* 公网版：本地镜像不上传，第 0 线路改为 jsDelivr（全球可达），
-     国内网络由其后的 ghfast / wsrv 兜底 */
   var LOCAL_PREFIX = 'https://gcore.jsdelivr.net/gh/hykhxy/kamen-rider-archive@main/';
   var TIER_COUNT = 5;
   var TIER_NAME = ['jsdelivr-gcore', 'ghfast', 'wsrv', 'jsdelivr', 'raw'];

@@ -36,6 +36,7 @@
     '<path d="M11.4 14.4 15.9 16.7l4.5-2.3" opacity=".8"/>';
 
   var CURRENT = null;
+  var ENTER_T = null;
 
   // 收集器在 dom.js，router 只做转发与视图级兜底
   function report(scope, err) { return KR.report(scope, err); }
@@ -78,6 +79,17 @@
     var n = KR.state && KR.state.myRiders ? KR.state.myRiders.length : 0;
     var nodes = KRD.qa('[data-bind="riders"]');
     for (var i = 0; i < nodes.length; i++) nodes[i].textContent = KRD.fmtNum(n);
+    // 顶栏唯一的动态视觉差异：0 压灰、≥1 转金（不加边框 / 不加 hover / 不做按钮）
+    var counts = KRD.qa('.hud-count');
+    for (var j = 0; j < counts.length; j++) counts[j].setAttribute('data-empty', n ? '0' : '1');
+  }
+
+  // hud 三档高度（66 / 54 / 84–88）。sticky 偏移一律读这个变量，不写死 54px。
+  function syncHudH() {
+    var hud = document.getElementById('hud');
+    if (!hud) return;
+    var h = hud.offsetHeight || 0;
+    if (h) document.documentElement.style.setProperty('--hud-h', h + 'px');
   }
 
   function buildHud(hud) {
@@ -99,10 +111,16 @@
       ));
     }
 
+    // 右侧只留「我的骑士」一个元素：不加按钮、不加刻度、不加边框。
+    // 读屏念「我的骑士 0」；抽卡后计数变化由 aria-live 播报一次。
     var side = KRH('div.hud-side', {},
-      KRH('div.hud-count', {}, KRH('b', { text: '0', 'data-bind': 'riders' }), KRH('span', { text: '我的骑士' })),
-      KRH('button.btn.btn-ghost.btn-sm', { type: 'button', 'data-act': 'save', title: '写入本地存档' }, '存档'),
-      KRH('button.btn.btn-ghost.btn-sm', { type: 'button', 'data-act': 'load', title: '读取本地存档' }, '读档')
+      KRH('div.hud-count', {
+        role: 'status', 'aria-live': 'polite', 'aria-atomic': 'true', 'data-empty': '1'
+      },
+        KRH('span.sr-only', { text: '我的骑士 ' }),
+        KRH('b', { text: '0', 'data-bind': 'riders' }),
+        KRH('span', { 'aria-hidden': 'true', text: '我的骑士' })
+      )
     );
 
     hud.appendChild(brand);
@@ -110,36 +128,13 @@
     hud.appendChild(side);
     hud.setAttribute('data-built', '1');
 
-    KRD.on(hud, 'click', function (ev) {
-      var btn = ev.target && ev.target.closest ? ev.target.closest('[data-act]') : null;
-      if (!btn) return;
-      var act = btn.getAttribute('data-act');
-      if (act === 'save') {
-        var ok = KR.save();
-        KR.toast(ok ? '已存档 · 我的骑士 ' + KRD.fmtNum(KR.state.myRiders.length) + ' 位' : '存档失败 · 浏览器禁用了本地存储', ok ? 'ok' : 'err');
-      } else if (act === 'load') {
-        if (KR.restore()) {
-          refreshCounters();
-          KR.toast('读档完成', 'ok');
-          route();
-        } else {
-          KR.toast('没有可读的存档', 'warn');
-        }
-      }
-    });
-
     refreshCounters();
   }
 
   function buildFoot(foot) {
     KRD.clear(foot);
-    var meta = global.KR && KR.WORLD && KR.WORLD.meta ? KR.WORLD.meta : null;
-    var line = meta && meta.entries
-      ? '图像 10,623 · 世界书 ' + KRD.fmtNum(meta.entries) + ' 条 · 作品 ' + KRD.fmtNum(meta.works) + ' 部'
-      : '图像 10,623 · 世界书 733 条 · 作品 46 部';
-    foot.appendChild(KRH('span', {}, KRH('b', { text: '数据' }), ' ' + line));
-    foot.appendChild(KRH('span', {}, KRH('b', { text: '线路' }), ' jsDelivr → ghfast → wsrv → raw'));
-    foot.appendChild(KRH('span', {}, KRH('b', { text: '运行' }), ' 纯静态 · file:// 双击可用'));
+    // 页脚只做标识与说明：不写体量、不写版本号、不写在线状态（一样都不带数字）
+    foot.appendChild(KRH('span', {}, KRH('b', { text: '档案' }), ' 世界书原文 · 作品年表 · 图像索引'));
   }
 
   function ensureShell() {
@@ -236,6 +231,11 @@
     viewEl.classList.remove('is-enter');
     void viewEl.offsetWidth;
     viewEl.classList.add('is-enter');
+    // 动画结束后必须摘掉 is-enter：view-in 带 fill:both，收尾的 transform 会让 #view 永久成为
+    // fixed 后代的包含块 —— 地图页的底部抽屉（position:fixed）会改相对 #view 定位，
+    // 一滚到页面下方就飘到文档底部去。
+    clearTimeout(ENTER_T);
+    ENTER_T = setTimeout(function () { viewEl.classList.remove('is-enter'); }, 420);
 
     try { global.scrollTo(0, 0); } catch (e) {}
     try { viewEl.focus({ preventScroll: true }); } catch (e) {}
@@ -337,9 +337,20 @@
   }
 
   function boot() {
+    // 顶栏不再有「读档」按钮，restore 的唯一调用点就在这里。
+    // 少了这一步，localStorage 里的 myRiders 永不读回：刷新即归零，而界面一切正常。
+    try { if (KR.restore) KR.restore(); } catch (e) { report('restore', e); }
     ensureShell();
+    syncHudH();
     route();
     markBoot();
+
+    KRD.on(global, 'resize', KRD.debounce(function () { syncHudH(); }, 140));
+    // iOS 上 orientationchange 常与 visualViewport.resize 抢时序，延后再量一次
+    KRD.on(global, 'orientationchange', function () { setTimeout(syncHudH, 150); });
+    if (document.fonts && document.fonts.ready && typeof document.fonts.ready.then === 'function') {
+      document.fonts.ready.then(function () { syncHudH(); }, function () {});
+    }
   }
 
   // 任何未捕获异常：只要 #view 还空着，就地把错误面板画进去，绝不白屏

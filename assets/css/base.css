@@ -227,14 +227,18 @@ table{border-collapse:collapse;border-spacing:0}
   position:fixed;inset:0;z-index:var(--z-modal);
   display:grid;place-items:center;padding:var(--sp-6);
   background:radial-gradient(120% 100% at 50% 40%,rgba(6,8,11,.86),rgba(4,5,8,.95));
-  animation:modal-fade var(--t) var(--ease)
+  animation:modal-fade var(--t) var(--ease);
+  /* 弹窗内要能长按选中文本：防止后续加固样式把 user-select 一路关掉 */
+  user-select:auto
 }
 .modal-dialog{
   --cut:14px;
   --edge:linear-gradient(150deg,var(--gold),var(--line-hi) 50%,var(--line));
   --fill:linear-gradient(180deg,#151922,#0b0d12);
   display:flex;flex-direction:column;
-  width:min(880px,96vw);max-height:86vh;
+  width:min(880px,96vw);
+  max-height:86vh;
+  max-block-size:100dvh;   /* iOS 上 86vh 按布局视口算会超出，这条兜底 */
   box-shadow:var(--sh-3);
   animation:modal-in var(--t-slow) var(--ease-out)
 }
@@ -246,6 +250,11 @@ table{border-collapse:collapse;border-spacing:0}
 .modal-x:hover{color:var(--red-hi)}
 @keyframes modal-fade{from{opacity:0}}
 @keyframes modal-in{from{opacity:0;transform:translateY(10px) scale(.99)}}
+
+/* 手机上 24px 的弹窗外边距太浪费：390 下左右各 24 只剩 342 给内容 */
+@media (max-width:620px){
+  .modal{padding:var(--sp-3)}
+}
 
 /* ── toast ──────────────────────────────────────────────── */
 .toast-wrap{

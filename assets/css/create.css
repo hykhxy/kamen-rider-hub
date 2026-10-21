@@ -271,8 +271,44 @@
 
 .crt-card-ft{display:grid;gap:var(--sp-2);padding:var(--sp-3);border-top:1px solid var(--line)}
 .crt-card-row{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2)}
-.crt-json{min-height:220px;font-family:var(--font-num);font-size:var(--fs-11)}
-.crt-json-wrap{display:grid;gap:var(--sp-2)}
+
+/* ── 手动复制弹窗（全部设定 / JSON 共用一套）──────────────── */
+.crt-copy{display:grid;gap:var(--sp-2);min-width:0}
+/* 操作区全部在顶部：软键盘弹出只压内容区，不会把按钮压到视口外 */
+.crt-copy-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.crt-copy-hint{flex:1 1 auto;min-width:0;margin:0;font-size:var(--fs-12);color:var(--tx-2);line-height:1.6}
+.crt-copy-all{margin-left:auto;flex:0 0 auto;min-height:32px}
+.crt-copy-note{margin:0;font-size:11px;line-height:1.6;color:var(--tx-2)}
+.crt-copy-count{
+  display:flex;align-items:baseline;gap:10px;justify-content:flex-end;
+  font-family:var(--font-num);font-size:11px;letter-spacing:.06em;color:var(--tx-2);
+  line-height:1.4
+}
+.crt-copy-sel{color:var(--gold-dim);margin-right:auto}
+/* 独立类，不挂 .txa：挂上去就得覆盖 base 的 min-height/resize，且容易被 .create .txa 反杀 */
+.crt-copy-txa{
+  display:block;width:100%;
+  flex:1 1 auto;min-height:0;
+  height:clamp(160px,46vh,440px);
+  padding:var(--sp-3);
+  resize:none;overflow:auto;overscroll-behavior:contain;
+  white-space:pre;
+  font-family:var(--font);font-size:var(--fs-13);line-height:1.75;
+  color:var(--tx-0);background:var(--ink-1);
+  border:1px solid var(--line);border-radius:var(--r-1);
+  -webkit-user-select:text;user-select:text;
+  transition:border-color var(--t) var(--ease),box-shadow var(--t) var(--ease)
+}
+.crt-copy-txa:hover{border-color:var(--line-hi)}
+.crt-copy-txa:focus{
+  outline:none;border-color:var(--gold);
+  box-shadow:0 0 0 1px var(--gold-a24),inset 0 0 14px var(--gold-a06)
+}
+/* JSON 才用 mono：中文「字段：值」用等宽会变成松散的日志样 */
+.crt-copy-txa--mono{
+  font-family:var(--font-num);font-size:var(--fs-11);line-height:1.6;
+  white-space:pre
+}
 
 /* ── 响应式 ─────────────────────────────────────────────── */
 @media (max-width:1180px){
@@ -297,4 +333,8 @@
   .crt-list{max-height:260px}
   .crt-card{grid-template-columns:84px minmax(0,1fr)}
   .crt-card-row{grid-template-columns:1fr}
+  /* 触控档次级行统一 38：底栏 30px 对拇指偏小，只在本页生效，别改全局 .btn */
+  .crt-card-row .btn{min-height:38px}
+  .crt-copy-all{min-height:36px;padding:0 12px}
+  .crt-copy-txa{height:clamp(150px,42vh,360px)}
 }

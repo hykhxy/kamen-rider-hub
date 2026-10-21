@@ -1,5 +1,9 @@
 /* owner: shell-core — 启动遮罩 / HUD / 路由容器 / 页脚 / 浮层 */
 
+/* hud 实测高度（router.js 在 boot / resize / orientationchange 时写回）。
+   兜底值必须取最高那档 88px：取 54 会让 ≤899 的 sticky 元素钻到第二行底下。 */
+:root{--hud-h:88px}
+
 body{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;position:relative}
 
 /* 极淡扫描线：峰值 .032，压在全站之上，不吃点击 */
@@ -83,10 +87,26 @@ body::after{
   background:linear-gradient(90deg,var(--gold),var(--red))
 }
 
-.hud-side{display:flex;align-items:center;gap:var(--sp-2);flex:0 0 auto}
+/* 右侧只剩「我的骑士」一个读数：不加按钮、不加边框、不加 hover 形变。
+   配平手段不是往栏里塞东西，而是把导航从「剩余空间居中」改成「视口绝对居中」。 */
+.hud-side{display:flex;align-items:center;gap:0;flex:0 0 auto;margin-left:auto}
 .hud-count{display:flex;flex-direction:column;align-items:flex-end;line-height:1.1;padding-right:6px}
 .hud-count b{font-family:var(--font-num);font-size:var(--fs-14);font-variant-numeric:tabular-nums;letter-spacing:.06em;color:var(--gold-hi)}
+.hud-count[data-empty="1"] b{color:var(--tx-2)}
 .hud-count span{font-size:9px;letter-spacing:.2em;color:var(--tx-2)}
+
+/* 视口绝对居中：脱离文档流后导航不再受 brand / side 宽度影响。
+   护栏 A：不再被 flex 压缩，必须限宽 + 横滚，否则变宽会盖住计数。
+   护栏 B（≤1023 的 static 回退）在下方媒体查询里，缺一个 390 顶栏就塌成一行。 */
+@media (min-width:1024px){
+  .hud-nav{
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    margin:0;max-width:calc(100% - 460px);overflow-x:auto
+  }
+}
+@media (max-width:1023px){
+  .hud-nav{position:static;transform:none;margin-inline:auto}
+}
 
 /* ── #view 路由容器 ────────────────────────────────────── */
 .view{
@@ -159,6 +179,7 @@ body::after{
   .hud{height:66px;padding:0 34px}
   .view{padding:32px 40px}
   .navlink{padding:10px 18px}
+  .hud-count b{font-size:15px}
 }
 
 @media (max-width:1023px){

@@ -1,4 +1,5 @@
-// owner: quest-create — 关卡地图（战术图）；顺带提供 create/gacha 共用的确定性数值基座 KR.quest
+// owner: quest-create — 关卡地图（战术图 / 窄屏纵向时序轴）；顺带提供 create/gacha 共用的确定性数值基座 KR.quest
+// v2：年表与种族从序章迁入，作为地图下方的「地层」；≤899 换纵向时序轴 + 底部抽屉。
 (function (global) {
   'use strict';
 
@@ -22,6 +23,8 @@
     n = num(n, 0);
     return n < 10 ? '0' + n : String(n);
   }
+
+  function str(v) { return String(v == null ? '' : v); }
 
   // ── 确定性数值基座 ─────────────────────────────────────
   // KRSTAT 由 roster-rider 交付；未就绪时用同形状的本地实现顶上，
@@ -143,6 +146,86 @@
     pad2: pad2
   };
 
+  // ── 富文本：世界书原文是 markdown 片段，只认粗体/标题/列表/表格/代码围栏 ──
+  // 从序章搬来（年表全文与种族全文现在只在这页出现）
+  var FENCE = String.fromCharCode(96, 96, 96);
+
+  function flat(s) {
+    return str(s).replace(/\*\*/g, '').replace(/[ \t]+/g, ' ').replace(/\n+/g, ' ')
+      .replace(/^\s+/, '').replace(/\s+$/, '');
+  }
+
+  function archInline(host, s) {
+    var parts = str(s).split('**');
+    for (var i = 0; i < parts.length; i++) {
+      if (!parts[i]) continue;
+      if (i % 2) host.appendChild(KRH('b.arch-b', {}, parts[i]));
+      else host.appendChild(document.createTextNode(parts[i]));
+    }
+    return host;
+  }
+
+  function archTable(lines) {
+    var box = KRH('div.arch-rt-tbl');
+    for (var i = 0; i < lines.length; i++) {
+      var raw = lines[i].replace(/^\s+/, '').replace(/\s+$/, '');
+      if (/^\|[\s:|-]+\|$/.test(raw)) continue;
+      var cells = raw.replace(/^\|/, '').replace(/\|$/, '').split('|');
+      var row = KRH('div.arch-rt-tr');
+      for (var j = 0; j < cells.length; j++) {
+        var c = KRH('span');
+        archInline(c, cells[j].replace(/^\s+/, '').replace(/\s+$/, ''));
+        row.appendChild(c);
+      }
+      box.appendChild(row);
+    }
+    return box;
+  }
+
+  function archRich(source) {
+    var out = [];
+    var blocks = str(source).replace(/\r/g, '').split(/\n{2,}/);
+    for (var i = 0; i < blocks.length; i++) {
+      var b = blocks[i].replace(/^\s+/, '').replace(/\s+$/, '');
+      if (!b) continue;
+      if (b.slice(0, 3) === FENCE) {
+        out.push(KRH('pre.arch-rt-pre', { text: b.split(FENCE).join('').replace(/^\s+/, '').replace(/\s+$/, '') }));
+        continue;
+      }
+      var lines = b.split('\n');
+      var head = /^(#{1,4})\s+(.+)$/.exec(lines[0]);
+      if (head && lines.length === 1) { out.push(KRH('h4.arch-rt-h', { text: head[2] })); continue; }
+      var isTbl = true, isList = true;
+      for (var j = 0; j < lines.length; j++) {
+        if (lines[j].charAt(0) !== '|') isTbl = false;
+        if (!/^\s*[-·]\s+/.test(lines[j])) isList = false;
+      }
+      if (isTbl) { out.push(archTable(lines)); continue; }
+      if (isList) {
+        var ul = KRH('ul.arch-rt-ul');
+        for (var k = 0; k < lines.length; k++) {
+          var li = KRH('li');
+          archInline(li, lines[k].replace(/^\s*[-·]\s+/, ''));
+          ul.appendChild(li);
+        }
+        out.push(ul);
+        continue;
+      }
+      var p = KRH('p.arch-rt-p');
+      for (var q = 0; q < lines.length; q++) {
+        if (q) p.appendChild(KRH('br'));
+        archInline(p, lines[q]);
+      }
+      out.push(p);
+    }
+    return out;
+  }
+
+  function pushAll(host, nodes) {
+    for (var i = 0; i < nodes.length; i++) host.appendChild(nodes[i]);
+    return host;
+  }
+
   // ── 关卡切分 ───────────────────────────────────────────
   var LEVELS = [
     {
@@ -191,7 +274,7 @@
     return buckets;
   }
 
-  // ── 几何：年份定 x，序号定同年错位；全程确定性 ────────
+  // ── 几何 A：横向图纸（≥900）年份定 x，序号定同年错位 ──────
   var MAP_H = 620;
 
   function geometry(nodes) {
@@ -231,7 +314,38 @@
     var pts = [];
     for (i = 0; i < n; i++) pts.push({ x: xs[i], y: axisY(xs[i]) });
 
-    return { w: W, h: MAP_H, padL: padL, usable: usable, minY: minY, maxY: maxY, pts: pts, axisY: axisY };
+    return { w: W, h: MAP_H, padL: padL, usable: usable, minY: minY, maxY: maxY, pts: pts, axisY: axisY, narrow: false };
+  }
+
+  // 每个节点的命中格宽度 = 到左右邻居较小距离 − 2（Voronoi 一格），互不重叠也不留死区。
+  // 宽度必须是 SVG 单位（跟着缩放一起变才铺满），高度在 CSS 里除以 --s 才是屏幕恒定 88px。
+  function hitWidths(pts, fallback) {
+    var order = [];
+    for (var i = 0; i < pts.length; i++) order.push(i);
+    order.sort(function (a, b) { return pts[a].x - pts[b].x; });
+    var out = [];
+    for (var k = 0; k < pts.length; k++) out.push(fallback || 38);
+    for (var j = 0; j < order.length; j++) {
+      var idx = order[j];
+      var dl = j > 0 ? Math.abs(pts[idx].x - pts[order[j - 1]].x) : Infinity;
+      var dr = j < order.length - 1 ? Math.abs(pts[order[j + 1]].x - pts[idx].x) : Infinity;
+      var d = Math.min(dl, dr);
+      out[idx] = Math.max(12, (isFinite(d) ? d : (fallback || 38) * 2) - 2);
+    }
+    return out;
+  }
+
+  // ── 几何 B：纵向时序轴（≤899）──────── six numbers, 契约见 04 §D2
+  function vGeometry(nodes) {
+    var n = nodes.length;
+    var w = 360;
+    var padTop = 40;
+    var pitch = 64;
+    var railX = 44;
+    var h = padTop + n * pitch + 24;
+    var pts = [];
+    for (var i = 0; i < n; i++) pts.push({ x: railX, y: padTop + i * pitch + 28 });
+    return { w: w, h: h, padTop: padTop, pitch: pitch, railX: railX, pts: pts, narrow: true };
   }
 
   function contourPath(cx, cy, rx, ry, seed, steps) {
@@ -298,7 +412,7 @@
     return t.length > 6 ? t.slice(0, 6) : t;
   }
 
-  // ── 战术图 ─────────────────────────────────────────────
+  // ── 战术图（横向图纸）──────────────────────────────────
   function buildStage(nodes, geo) {
     var svg = KRH('svg.map-svg', {
       viewBox: '0 0 ' + geo.w + ' ' + geo.h,
@@ -360,6 +474,7 @@
     lead.setAttribute('hidden', '');
     svg.appendChild(lead);
 
+    var hits = hitWidths(geo.pts, 38);
     var layer = KRH('g.map-nodes');
     for (var n = 0; n < nodes.length; n++) {
       var w = nodes[n];
@@ -375,8 +490,12 @@
         tabindex: '0', role: 'button',
         'aria-label': pad2(w.no) + ' ' + w.title + ' ' + num(w.year, 0)
       });
+      // 命中格宽度写进自定义属性，CSS 里 x / width / height 都读它
+      g.style.setProperty('--hit-w', hits[n].toFixed(1) + 'px');
+
       var inner = KRH('g.map-node-in');
-      inner.appendChild(KRH('circle.map-node-hit', { r: 19 }));
+      // rect 而不是 circle：命中区是竖长条（宽随邻居距离、高 88px 屏幕恒定）
+      inner.appendChild(KRH('rect.map-node-hit', { rx: 2 }));
       var core = KRH('g.map-node-core');
       core.appendChild(KRH('circle.map-node-ring', { r: 11 }));
       core.appendChild(KRH('circle.map-node-dot', { r: 3.4 }));
@@ -404,26 +523,105 @@
     return svg;
   }
 
+  // ── 时序轴（纵向，≤899）─────────────────────────────────
+  function buildAxis(nodes, geo) {
+    var svg = KRH('svg.map-svg.map-svg--axis', {
+      viewBox: '0 0 ' + geo.w + ' ' + geo.h,
+      width: geo.w, height: geo.h,
+      preserveAspectRatio: 'xMinYMin meet',
+      role: 'img', 'aria-label': '关卡时序轴'
+    });
+
+    svg.appendChild(KRH('line.map-rail', {
+      x1: geo.railX, y1: geo.padTop, x2: geo.railX, y2: geo.h - 20
+    }));
+
+    var ticks = KRH('g.map-rail-ticks', { 'aria-hidden': 'true' });
+    for (var i = 0; i < nodes.length; i++) {
+      var major = (i % 5 === 0);
+      ticks.appendChild(KRH('line' + (major ? '.map-rail-tick.map-rail-tick--major' : '.map-rail-tick'), {
+        x1: geo.railX - (major ? 9 : 5), y1: geo.pts[i].y,
+        x2: geo.railX - 2, y2: geo.pts[i].y
+      }));
+    }
+    svg.appendChild(ticks);
+
+    var layer = KRH('g.map-rows');
+    for (var n = 0; n < nodes.length; n++) {
+      var w = nodes[n];
+      var pt = geo.pts[n];
+      var g = KRH('g.map-row', {
+        transform: 'translate(0,' + pt.y.toFixed(1) + ')',
+        'data-wid': w.id, 'data-no': pad2(w.no),
+        tabindex: '0', role: 'button',
+        'aria-label': pad2(w.no) + ' ' + w.title + ' ' + num(w.year, 0)
+      });
+      // 整行命中：360 × 64（≥44），点行内任意一处都算选中
+      g.appendChild(KRH('rect.map-row-hit', { x: 0, y: -geo.pitch / 2, width: geo.w, height: geo.pitch }));
+      // 45° 菱形复用地图的刻度语言：外层 g 负责平移到竖轴，rect 绕自身原点旋转
+      g.appendChild(KRH('g', { transform: 'translate(' + geo.railX + ',0)' },
+        KRH('rect.map-row-dia', { x: -3.5, y: -3.5, width: 7, height: 7, transform: 'rotate(45)' })
+      ));
+      g.appendChild(KRH('circle.map-row-dot', { cx: geo.railX, r: 2.4 }));
+      g.appendChild(KRH('text.map-row-no', { x: geo.railX + 18, y: 4, text: pad2(w.no) }));
+      g.appendChild(KRH('text.map-row-name', { x: geo.railX + 52, y: 4, text: nodeTitle(w) }));
+      g.appendChild(KRH('text.map-row-year', {
+        x: geo.w - 8, y: 4, text: String(num(w.year, 0)), 'text-anchor': 'end'
+      }));
+      layer.appendChild(g);
+    }
+    svg.appendChild(layer);
+    return svg;
+  }
+
+  // ── 地点面板 ───────────────────────────────────────────
+  function sheetBtnLabel(open) { return open ? '收起地点面板' : '展开地点面板'; }
+
+  function chevUp() {
+    return KRH('svg.map-sheet-ico', {
+      viewBox: '0 0 24 24', 'aria-hidden': 'true', fill: 'none',
+      stroke: 'currentColor', 'stroke-width': '1.6', 'stroke-linecap': 'square'
+    }, KRH('path', { d: 'M6 14.5 12 8.5l6 6' }));
+  }
+
   function renderPanel(host, work) {
     KRD.clear(host);
+    var narrow = S.narrow;
+
+    var hd = KRH('div.panel-hd');
+    if (work) {
+      hd.appendChild(KRH('span.map-panel-no', { text: pad2(work.no) }));
+      hd.appendChild(KRH('h2', { text: work.title }));
+    } else {
+      hd.appendChild(KRH('h2', {
+        text: narrow ? ('选一个地点 · 这条线上有 ' + S.nodes.length + ' 处') : '地点档案'
+      }));
+    }
+    if (narrow) {
+      // 整条 56px 都是开关（44×44 只是最小保证），箭头只是它内部的视觉指示
+      hd.appendChild(KRH('button.map-sheet-tg', {
+        type: 'button',
+        'aria-controls': 'map-panel-bd',
+        'aria-expanded': S.sheet === 'open' ? 'true' : 'false',
+        'aria-label': sheetBtnLabel(S.sheet === 'open'),
+        onclick: function () { setSheet(S.sheet === 'open' ? 'peek' : 'open'); }
+      }, chevUp()));
+    }
+    host.appendChild(hd);
+
     if (!work) {
-      host.appendChild(KRH('div.panel-hd', {}, KRH('h2', { text: '地点档案' })));
-      host.appendChild(KRH('div.panel-bd', {}, KRH('div.empty', {},
+      var empty = KRH('div.panel-bd', { id: 'map-panel-bd' }, KRH('div.empty', {},
         KRH('b', { text: '未选择地点' }),
         KRH('span', { text: '在战术图上点一个节点，这里出该作的开场资料。' })
-      )));
+      ));
+      host.appendChild(empty);
       return;
     }
 
     var op = openingOf(work);
     var r = riderOf(work);
 
-    host.appendChild(KRH('div.panel-hd', {},
-      KRH('span.map-panel-no', { text: pad2(work.no) }),
-      KRH('h2', { text: work.title })
-    ));
-
-    var bd = KRH('div.panel-bd.map-panel-bd');
+    var bd = KRH('div.panel-bd.map-panel-bd', { id: 'map-panel-bd' });
     var grid = KRH('div.map-kv-grid');
     function row(k, v) {
       grid.appendChild(KRH('div.map-kv', {},
@@ -517,11 +715,176 @@
     if (KRIMG) KRIMG.observe(layer);
   }
 
+  // ── 迁入区块：六纪统合年表 / 四十六个种族 ────────────────
+  function zoneHead(kicker, title, note) {
+    var hd = KRH('header.arch-hd', {},
+      KRH('div.t-eyebrow', { text: kicker }),
+      KRH('h2.t-h2', { text: title }),
+      KRH('p.arch-note', { text: note })
+    );
+    return hd;
+  }
+
+  function splitEra(s) {
+    var parts = str(s).split(/\s+/);
+    var out = [];
+    for (var i = 0; i < parts.length; i++) if (parts[i]) out.push(parts[i]);
+    if (out.length <= 1) return { no: '', name: out[0] || '' };
+    return { no: out[0], name: out.slice(1).join(' ') };
+  }
+
+  function buildChrono(W) {
+    var list = (W.timeline || []).slice();
+    var sec = KRH('section.map-zone.map-zone--chrono', { 'data-zone': 'chrono' });
+    sec.appendChild(zoneHead('TIMELINE · 统合年表', '六纪统合年表', '按组织继承与力量来源切片，不是年份复述。点一纪读全文。'));
+
+    var track = KRH('div.chrono-track', { role: 'tablist', 'aria-label': '统合年表各纪' });
+    var detail = KRH('div.chrono-detail', { role: 'tabpanel', tabindex: '0' });
+    var dhd = KRH('div.chrono-dhd');
+    var body = KRH('div.chrono-body');
+    detail.appendChild(dhd);
+    detail.appendChild(body);
+
+    var items = [], btns = [];
+
+    function select(idx, wantFocus) {
+      S.chrono = idx;
+      for (var i = 0; i < items.length; i++) {
+        var on = i === idx;
+        items[i].classList.toggle('is-on', on);
+        btns[i].setAttribute('aria-selected', on ? 'true' : 'false');
+        btns[i].setAttribute('tabindex', on ? '0' : '-1');
+        if (on) { btns[i].setAttribute('id', 'chrono-tab-' + i); detail.setAttribute('aria-labelledby', 'chrono-tab-' + i); }
+      }
+      KRD.clear(dhd);
+      KRD.clear(body);
+      var t = list[idx];
+      if (!t) return;
+      var e = splitEra(t.era);
+      dhd.appendChild(KRH('b', { text: (e.no ? e.no + ' · ' : '') + e.name }));
+      dhd.appendChild(KRH('span.tnum', { text: str(t.range) }));
+      pushAll(body, archRich(t.text));
+      if (wantFocus) { try { btns[idx].focus(); } catch (err) {} }
+    }
+
+    for (var i = 0; i < list.length; i++) {
+      (function (idx) {
+        var e = splitEra(list[idx].era);
+        var item = KRH('div.chrono-item');
+        var btn = KRH('button.chrono-btn', {
+          type: 'button', role: 'tab', 'data-idx': String(idx),
+          'aria-selected': 'false', tabindex: '-1'
+        });
+        btn.appendChild(KRH('span.chrono-era', { text: e.no || '纪' }));
+        btn.appendChild(KRH('b.chrono-name', { text: e.name }));
+        btn.appendChild(KRH('span.chrono-range.tnum', { text: str(list[idx].range) }));
+        item.appendChild(btn);
+        track.appendChild(item);
+        btns.push(btn);
+        items.push(item);
+      })(i);
+    }
+
+    KRD.on(track, 'click', function (ev) {
+      var btn = ev.target && ev.target.closest ? ev.target.closest('[data-idx]') : null;
+      if (!btn) return;
+      select(Number(btn.getAttribute('data-idx')), false);
+    });
+
+    KRD.on(track, 'keydown', function (ev) {
+      var k = ev.key;
+      if (k !== 'ArrowLeft' && k !== 'ArrowRight' && k !== 'Home' && k !== 'End') return;
+      var cur = S && S.chrono ? S.chrono : 0;
+      var next = k === 'Home' ? 0
+        : (k === 'End' ? list.length - 1
+          : (k === 'ArrowRight' ? Math.min(list.length - 1, cur + 1) : Math.max(0, cur - 1)));
+      if (next === cur) return;
+      ev.preventDefault();
+      select(next, true);
+    });
+
+    sec.appendChild(track);
+    sec.appendChild(detail);
+    if (list.length) select(0, false);
+    else S.chrono = 0;
+    return sec;
+  }
+
+  function raceModal(race) {
+    return function () {
+      var box = KRH('div.race-modal');
+      if (race.base) box.appendChild(KRH('div.tags', {}, KRH('span.tag.tag--gold', { text: str(race.base) })));
+      pushAll(box, archRich(race.desc));
+      var h = KR.modal({ title: str(race.name), body: box });
+      if (S) S.layers.push(h);
+    };
+  }
+
+  function raceRow(race, idx) {
+    var row = KRH('button.race-card', {
+      type: 'button', 'data-race': str(idx),
+      'aria-haspopup': 'dialog', 'aria-label': str(race.name) + ' 全文'
+    });
+    if (idx === 0) row.setAttribute('class', row.getAttribute('class') + ' race-card--sum');
+    var tx = KRH('span.race-tx');
+    tx.appendChild(KRH('b.race-name', { text: str(race.name) }));
+    if (race.base) tx.appendChild(KRH('span.tag.tag--dim.race-base', { text: str(race.base) }));
+    row.appendChild(tx);
+    row.addEventListener('click', raceModal(race));
+    return row;
+  }
+
+  function buildRaces(W) {
+    var list = W.races || [];
+    var sec = KRH('section.map-zone.map-zone--races', { 'data-zone': 'races' });
+    sec.appendChild(zoneHead('AKUMA · 敌我同源', '四十六个种族', '骑士与怪人出自同一套技术、同一个源头、同一种代价。点一行读全文。'));
+
+    var grid = KRH('div.race-grid', { id: 'arch-race-grid', 'data-fold': '1' });
+    for (var i = 0; i < list.length; i++) grid.appendChild(raceRow(list[i], i));
+
+    var more = KRH('button.btn.btn-ghost.btn-sm.race-more', {
+      type: 'button', 'aria-controls': 'arch-race-grid'
+    });
+
+    function paintMore() {
+      var open = grid.getAttribute('data-fold') === '0';
+      more.setAttribute('aria-expanded', open ? 'true' : 'false');
+      more.textContent = open ? '收起' : ('展开全部 ' + list.length + ' 条');
+    }
+
+    more.addEventListener('click', function () {
+      grid.setAttribute('data-fold', grid.getAttribute('data-fold') === '1' ? '0' : '1');
+      paintMore();
+    });
+    paintMore();
+
+    // 折叠按钮必须放在 multicol 容器之外：塞进 .race-grid 会被分栏切走
+    sec.appendChild(grid);
+    sec.appendChild(more);
+    return sec;
+  }
+
+  function buildArch(W) {
+    var wrap = KRH('div.map-arch', { 'aria-label': '关卡附录' });
+    wrap.appendChild(buildChrono(W));
+    wrap.appendChild(buildRaces(W));
+    return wrap;
+  }
+
   // ── 视图 ───────────────────────────────────────────────
   var S = null;
+  var MQ_NARROW = '(max-width:899px)';
+
+  function isNarrow() {
+    return !!(global.matchMedia && global.matchMedia(MQ_NARROW).matches);
+  }
 
   function mount(el, ctx) {
-    S = { level: 0, view: 'overview', selId: '', nodes: [], geo: null, offResize: null, levels: null, notesOpen: false };
+    S = {
+      level: 0, view: 'overview', selId: '', nodes: [], geo: null,
+      narrow: false, sheet: 'peek', notesOpen: false, chrono: 0,
+      offResize: null, offMq: null, offEsc: null, layers: []
+    };
     el.setAttribute('data-own', 'map');
 
     if (!KR.WORLD || !KR.WORLD.works || !KR.WORLD.works.length) {
@@ -535,6 +898,7 @@
       return;
     }
 
+    S.narrow = isNarrow();
     S.levels = buildLevelAll();
     S.noteTotal = S.levels[0].notes.length + S.levels[1].notes.length;
 
@@ -546,10 +910,9 @@
     var metaLine = KRH('div.map-meta');
     var notesBox = KRH('div.map-notes');
     var desc = KRH('p.map-desc');
-    head.appendChild(levels);
-    head.appendChild(metaLine);
-    head.appendChild(notesBox);
-    head.appendChild(desc);
+    // 关卡 tab 必须是 .mapview 的直接子元素：sticky 需要高度足够的包含块，
+    // 塞进短小的 header 里一滚就失效（≤899 切关时的锚点就没了）。
+    var sub = KRH('div.map-sub', {}, metaLine, notesBox, desc);
 
     var stage = KRH('div.map-stage');
     var canvas = KRH('div.map-canvas');
@@ -561,25 +924,83 @@
       { key: 'region', label: '区域', hint: '选中节点 1.8×，带悬浮铭牌' },
       { key: 'close', label: '特写', hint: '3.2×，舞台纹理 + 敌方剪影' }
     ];
-    function bindView(def) {
+    for (var v = 0; v < VIEW_DEF.length; v++) {
       views.appendChild(KRH('button.btn.btn-sm.map-vbtn', {
-        type: 'button', 'data-view': def.key, title: def.hint
-      }, def.label));
+        type: 'button', 'data-view': VIEW_DEF[v].key, title: VIEW_DEF[v].hint
+      }, VIEW_DEF[v].label));
     }
-    for (var v = 0; v < VIEW_DEF.length; v++) bindView(VIEW_DEF[v]);
     stage.appendChild(views);
 
+    // 地点选择播报：键盘选中后焦点不动，靠这里播一次地名
+    var live = KRH('div.sr-only', { role: 'status', 'aria-live': 'polite', 'aria-atomic': 'true' });
+
     var panel = KRH('aside.map-panel.panel.panel--quiet');
-    el.appendChild(KRH('section.mapview', {}, head, KRH('div.map-body', {}, stage, panel)));
+
+    // 关卡 tab 单独放在 mapview 下（不塞进 .map-head）：sticky 需要高度足够的包含块，
+    // 放进短小的 header 里一滚就失效。
+    var shell = KRH('section.mapview', {},
+      head, levels, sub,
+      KRH('div.map-body', {}, stage, panel),
+      live
+    );
+    el.appendChild(shell);
+
+    // 年表 / 种族：通栏，不与右栏对齐（对齐会让人以为它们属于面板）
+    el.appendChild(buildArch(KR.WORLD));
 
     function currentWork() {
       for (var i = 0; i < S.nodes.length; i++) if (S.nodes[i].id === S.selId) return S.nodes[i];
       return null;
     }
 
+    function setSheet(state) {
+      S.sheet = state;
+      panel.setAttribute('data-sheet', state);
+      syncSheetA11y();
+      // scroll-padding-bottom 随状态切：peek 留抽屉高度，open 留 66vh
+      try {
+        document.documentElement.style.scrollPaddingBottom = (state === 'open' ? '66vh' : '64px');
+      } catch (e) {}
+    }
+
+    function syncSheetA11y() {
+      if (!S || !S.narrow) {
+        panel.removeAttribute('data-sheet');
+        var all = panel.querySelectorAll('.panel-bd,.panel-ft');
+        for (var k = 0; k < all.length; k++) {
+          all[k].removeAttribute('inert');
+          all[k].removeAttribute('aria-hidden');
+        }
+        return;
+      }
+      panel.setAttribute('data-sheet', S.sheet);
+      var open = S.sheet === 'open';
+      var tg = panel.querySelector('.map-sheet-tg');
+      if (tg) {
+        tg.setAttribute('aria-expanded', open ? 'true' : 'false');
+        tg.setAttribute('aria-label', sheetBtnLabel(open));
+      }
+      // peek 态：translateY 只是视觉推出，节点仍在布局里，必须退出 Tab 序
+      var parts = panel.querySelectorAll('.panel-bd,.panel-ft');
+      for (var i = 0; i < parts.length; i++) {
+        if (open) {
+          parts[i].removeAttribute('inert');
+          parts[i].removeAttribute('aria-hidden');
+        } else {
+          parts[i].setAttribute('inert', '');
+          parts[i].setAttribute('aria-hidden', 'true');
+        }
+      }
+    }
+
     function applyView() {
-      var geo = S.geo;
-      if (!geo) return;
+      if (!S.geo) return;
+      if (S.narrow) {
+        // 纵向轴：等比铺满，不做平移缩放；命中区按屏幕恒定，--s 固定 1
+        canvas.style.transform = 'none';
+        canvas.style.setProperty('--s', '1');
+        return;
+      }
       var vw = stage.clientWidth || 0;
       var vh = stage.clientHeight || 0;
       if ((!vw || !vh) && stage.getBoundingClientRect) {
@@ -590,18 +1011,18 @@
       vw = vw || 1120;
       vh = vh || 560;
 
-      var fit = Math.min(vw / geo.w, vh / geo.h);
+      var fit = Math.min(vw / S.geo.w, vh / S.geo.h);
       var scale = fit;
-      var tx = (vw - geo.w * fit) / 2;
-      var ty = (vh - geo.h * fit) / 2;
+      var tx = (vw - S.geo.w * fit) / 2;
+      var ty = (vh - S.geo.h * fit) / 2;
 
       if (S.view !== 'overview' && S.selId) {
         var idx = -1;
         for (var i = 0; i < S.nodes.length; i++) if (S.nodes[i].id === S.selId) idx = i;
         if (idx >= 0) {
           scale = fit * (S.view === 'close' ? 3.2 : 1.8);
-          tx = vw / 2 - geo.pts[idx].x * scale;
-          ty = vh / 2 - geo.pts[idx].y * scale;
+          tx = vw / 2 - S.geo.pts[idx].x * scale;
+          ty = vh / 2 - S.geo.pts[idx].y * scale;
         }
       }
 
@@ -616,18 +1037,15 @@
     }
 
     function paintSelection() {
-      var nodes = KRD.qa('.map-node', canvas);
-      var sel = null;
+      var nodes = KRD.qa('g[data-wid]', canvas);
       for (var i = 0; i < nodes.length; i++) {
-        var on = nodes[i].getAttribute('data-wid') === S.selId;
-        nodes[i].classList.toggle('is-sel', on);
-        if (on) sel = nodes[i];
+        nodes[i].classList.toggle('is-sel', nodes[i].getAttribute('data-wid') === S.selId);
       }
 
       var lead = canvas.querySelector('.map-lead');
       var work = currentWork();
       if (lead) {
-        if (work) {
+        if (work && !S.narrow) {
           lead.removeAttribute('hidden');
           var ix = 0, iy = 0;
           for (var j = 0; j < S.nodes.length; j++) {
@@ -643,9 +1061,18 @@
       }
 
       renderPanel(panel, work);
+      syncSheetA11y();
       stage.classList.toggle('has-sel', !!work);
-      if (S.view === 'close') renderCloseLayer(stage, work);
-      else {
+
+      if (live) {
+        live.textContent = work ? ('已选 ' + work.title + ' · 编号 ' + pad2(work.no)) : '';
+      }
+
+      if (S.narrow) {
+        if (S.view === 'close') S.view = 'overview';
+      } else if (S.view === 'close') {
+        renderCloseLayer(stage, work);
+      } else {
         var old = stage.querySelector('.map-close');
         if (old && old.parentNode) old.parentNode.removeChild(old);
       }
@@ -663,6 +1090,7 @@
 
     function setView(key) {
       if (key !== 'overview' && key !== 'region' && key !== 'close') return;
+      if (S.narrow) key = 'overview';
       if (S.view === key) return;
       S.view = key;
       paintViewButtons();
@@ -670,11 +1098,54 @@
       paintSelection();
     }
 
-    function selectNode(wid) {
+    // 当前节点始终可见：纵向轴 2176px，选中后把行滚进「hud + 关卡条之下、抽屉之上」的可见带。
+    // 手写 scrollBy 而不是 scrollIntoView：sticky 关卡条会盖住视口顶部，
+    // scroll-padding 只写得下一条，算不准就压到关卡片底下。
+    function revealRow(wid, force) {
+      if (!S.narrow) return;
+      var g = canvas.querySelector('g[data-wid="' + wid + '"]');
+      if (!g) return;
+      var box = g.getBoundingClientRect();
+      var hudH = parseFloat(global.getComputedStyle(document.documentElement).getPropertyValue('--hud-h')) || 88;
+      var lvH = levels ? levels.getBoundingClientRect().height : 0;
+      var bandTop = hudH + lvH + 12;
+      // 抽屉 open 时占 66vh，可见带只剩 90px 上下：这时让行顶贴住可见带上沿，别居中
+      var drawerH = S.sheet === 'open' ? Math.round(global.innerHeight * 0.66) + 8 : 64;
+      var bandBottom = global.innerHeight - drawerH;
+      var fits = (bandBottom - bandTop) >= (box.height + 8);
+      if (!force && box.top >= bandTop - 4 && box.bottom <= bandBottom + 4) return;
+      var target = fits ? ((bandTop + bandBottom) / 2 - box.height / 2) : (bandTop + 8);
+      if (target < bandTop) target = bandTop;
+      var delta = box.top - target;
+      if (!delta || Math.abs(delta) < 2) return;
+      try { global.scrollBy({ top: delta, behavior: 'auto' }); } catch (e) {
+        try { global.scrollTo(0, (global.pageYOffset || 0) + delta); } catch (e2) {}
+      }
+    }
+
+    // 面板落到舞台下方时（≤1100），选中后确保面板头在视野内，否则用户只看到节点高亮
+    function revealPanel() {
+      if (S.narrow || !panel) return;
+      if (!global.matchMedia || !global.matchMedia('(max-width:1100px)').matches) return;
+      var hd = panel.querySelector('.panel-hd');
+      if (!hd) return;
+      var box = hd.getBoundingClientRect();
+      if (box.top < 0 || box.top > global.innerHeight - 60) {
+        try { hd.scrollIntoView({ block: 'nearest', behavior: 'auto' }); } catch (e) {}
+      }
+    }
+
+    function selectNode(wid, fromPointer) {
       if (!wid) return;
       S.selId = wid;
+      if (S.narrow) {
+        // 点节点 = 强制展开，不做「记住上次 peek」：可预测 > 聪明
+        setSheet('open');
+      }
       paintSelection();
       if (S.view !== 'overview') applyView();
+      if (S.narrow) revealRow(wid, true);
+      else if (fromPointer) revealPanel();
     }
 
     function paintLevels() {
@@ -727,12 +1198,21 @@
     }
 
     function paintCanvas() {
+      S.narrow = isNarrow();
       S.nodes = S.levels[S.level].nodes;
-      S.geo = geometry(S.nodes);
+      S.geo = S.narrow ? vGeometry(S.nodes) : geometry(S.nodes);
       KRD.clear(canvas);
-      canvas.appendChild(buildStage(S.nodes, S.geo));
-      canvas.style.width = S.geo.w + 'px';
-      canvas.style.height = S.geo.h + 'px';
+      canvas.appendChild(S.narrow ? buildAxis(S.nodes, S.geo) : buildStage(S.nodes, S.geo));
+
+      if (S.narrow) {
+        canvas.style.width = '100%';
+        canvas.style.height = 'auto';
+        canvas.style.transform = 'none';
+      } else {
+        canvas.style.width = S.geo.w + 'px';
+        canvas.style.height = S.geo.h + 'px';
+        canvas.style.removeProperty('transform');
+      }
 
       var keep = false;
       for (var i = 0; i < S.nodes.length; i++) if (S.nodes[i].id === S.selId) keep = true;
@@ -746,6 +1226,7 @@
       paintSelection();
     }
 
+    // ── 事件 ─────────────────────────────────────────────
     KRD.on(levels, 'click', function (ev) {
       var btn = ev.target && ev.target.closest ? ev.target.closest('[data-lv]') : null;
       if (!btn) return;
@@ -754,6 +1235,10 @@
       S.level = index;
       S.selId = '';
       paintCanvas();
+      // 切关后回到舞台顶（sticky 关卡条 + scroll-margin-top 提供锚点）
+      if (S.narrow) {
+        try { stage.scrollIntoView({ block: 'start', behavior: 'auto' }); } catch (e) {}
+      }
     });
 
     KRD.on(views, 'click', function (ev) {
@@ -763,17 +1248,17 @@
     });
 
     KRD.on(canvas, 'click', function (ev) {
-      var node = ev.target && ev.target.closest ? ev.target.closest('.map-node') : null;
+      var node = ev.target && ev.target.closest ? ev.target.closest('g[data-wid]') : null;
       if (!node) return;
-      selectNode(node.getAttribute('data-wid'));
+      selectNode(node.getAttribute('data-wid'), true);
     });
 
     KRD.on(canvas, 'keydown', function (ev) {
       if (ev.key !== 'Enter' && ev.key !== ' ') return;
-      var node = ev.target && ev.target.closest ? ev.target.closest('.map-node') : null;
+      var node = ev.target && ev.target.closest ? ev.target.closest('g[data-wid]') : null;
       if (!node) return;
       ev.preventDefault();
-      selectNode(node.getAttribute('data-wid'));
+      selectNode(node.getAttribute('data-wid'), true);
     });
 
     KRD.on(panel, 'click', function (ev) {
@@ -785,9 +1270,37 @@
       KR.go('/create?work=' + encodeURIComponent(work.id) + '&node=' + num(work.no, 0));
     });
 
+    // Esc 回 peek，焦点回最后选中的节点。弹窗开着时让 KR.modal 自己处理，别一次关两层。
+    S.offEsc = KRD.on(document, 'keydown', function (ev) {
+      if (ev.key !== 'Escape' || !S || !S.narrow) return;
+      if (document.querySelector('.modal')) return;
+      if (S.sheet !== 'open') return;
+      setSheet('peek');
+      var g = S.selId ? canvas.querySelector('g[data-wid="' + S.selId + '"]') : null;
+      if (g) { try { g.focus(); } catch (e) {} }
+    });
+
     S.offResize = KRD.on(global, 'resize', KRD.debounce(function () { applyView(); }, 140));
 
+    // 断点穿越要换几何（横向图纸 ↔ 纵向轴），换完保留选中项
+    if (global.matchMedia) {
+      var mql = global.matchMedia(MQ_NARROW);
+      var onMq = function () {
+        if (!S) return;
+        if (isNarrow() === S.narrow) return;
+        paintCanvas();
+        if (!S.narrow) setSheet('open');
+      };
+      if (mql.addEventListener) mql.addEventListener('change', onMq);
+      else if (mql.addListener) mql.addListener(onMq);
+      S.offMq = function () {
+        if (mql.removeEventListener) mql.removeEventListener('change', onMq);
+        else if (mql.removeListener) mql.removeListener(onMq);
+      };
+    }
+
     paintCanvas();
+    if (S.narrow) setSheet('peek');
 
     if (typeof global.requestAnimationFrame === 'function') {
       global.requestAnimationFrame(function () { if (S) applyView(); });
@@ -795,7 +1308,15 @@
   }
 
   function unmount(el) {
-    if (S && S.offResize) { S.offResize(); S.offResize = null; }
+    if (S) {
+      if (S.offResize) S.offResize();
+      if (S.offMq) S.offMq();
+      if (S.offEsc) S.offEsc();
+      for (var i = 0; i < S.layers.length; i++) {
+        try { S.layers[i].close(); } catch (e) {}
+      }
+    }
+    try { document.documentElement.style.scrollPaddingBottom = ''; } catch (e) {}
     S = null;
     if (el) {
       el.removeAttribute('data-own');
