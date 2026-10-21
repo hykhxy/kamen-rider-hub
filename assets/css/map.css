@@ -473,20 +473,23 @@
     background:linear-gradient(180deg,var(--ink-0) 78%,transparent);
     padding:6px 0 8px;margin:-6px 0 0
   }
+  /* 手机端保持与桌面同一套横向图纸：画布给足宽度，左右拖动查看 */
   .map-stage{
     height:auto;min-height:0;aspect-ratio:auto;
-    overflow:visible;clip-path:none;
-    border:0;
-    padding:8px 0 12px;
-    scroll-margin-top:calc(var(--hud-h,88px) + 64px)
+    overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;
+    clip-path:none;border:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+    padding:6px 0 10px;
+    scroll-margin-top:calc(var(--hud-h,88px) + 64px);
+    scrollbar-width:thin
   }
   .map-stage::before,.map-stage::after{display:none}
   .map-canvas{
     position:relative;left:auto;top:auto;
-    width:100%;height:auto;
+    width:max-content;height:auto;
     transform:none !important;will-change:auto;transition:none
   }
-  .map-svg,.map-svg--axis{width:100%;height:auto}
+  .map-svg{width:var(--mw,820px);max-width:none;height:auto}
+  .map-svg--axis{width:100%;height:auto}
   /* 纵向模式只有一种视角，切视角按钮在这是空控件 —— 直接不渲染存在感 */
   .map-views{display:none}
 
