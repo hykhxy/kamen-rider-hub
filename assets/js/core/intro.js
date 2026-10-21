@@ -179,9 +179,16 @@
     wrap.querySelector('[data-fs]').addEventListener('click', function (ev) {
       ev.stopPropagation();
       try {
-        if (doc.fullscreenElement) { doc.exitFullscreen(); }
-        else if (wrap.requestFullscreen) { wrap.requestFullscreen(); }
-        else if (video.webkitEnterFullscreen) { video.webkitEnterFullscreen(); }
+        if (doc.fullscreenElement) {
+          doc.exitFullscreen();
+          if (global.screen && screen.orientation && screen.orientation.unlock) screen.orientation.unlock();
+        } else if (wrap.requestFullscreen) {
+          var r = wrap.requestFullscreen();
+          // 手机竖屏看 2.2:1 的片子会被压成一条：进全屏时顺手锁横屏
+          if (r && r.then && global.screen && screen.orientation && screen.orientation.lock) {
+            r.then(function () { screen.orientation.lock('landscape').catch(function () {}); }).catch(function () {});
+          }
+        } else if (video.webkitEnterFullscreen) { video.webkitEnterFullscreen(); }
       } catch (e) {}
     });
     wrap.querySelector('[data-replay]').addEventListener('click', function (ev) {
