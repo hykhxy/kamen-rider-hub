@@ -98,6 +98,8 @@
     run();
   }
 
-  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', start);
-  else start();
+  // 尽早显示：本脚本在 <body> 末尾执行，此时 body 已存在，
+  // 不等 DOMContentLoaded —— 否则会被后面 3.8MB 数据脚本的解析拖后 1s 以上。
+  if (doc.body) start();
+  else doc.addEventListener('DOMContentLoaded', start);
 })(window, document);
