@@ -643,6 +643,7 @@
         type: 'button', 'data-act': 'copy-all'
       }, '复制全部设定'),
       KRH('div.crt-card-row', {},
+        // 05 §1.1：唯一把内容落进 localStorage 的入口，删了 KR.restore() 永远读到空
         KRH('button.btn.btn-ghost.btn-sm', { type: 'button', 'data-act': 'copy-json' }, '复制 JSON')
       )
     );
