@@ -241,7 +241,13 @@
   function start() {
     replayPill();
     if (skipRequested()) return;
-    open(false);
+    var go = function () { open(false); };
+    // 等加载页播完再进开场；加载页被跳过时它会立刻 resolve
+    if (global.KR_PRELOAD && global.KR_PRELOAD.ready && global.KR_PRELOAD.ready.then) {
+      global.KR_PRELOAD.ready.then(function () { global.setTimeout(go, 240); });
+    } else {
+      go();
+    }
   }
 
   global.KRIntro = {
