@@ -62,7 +62,8 @@
   }
 
   function run() {
-    var el = build();
+    // 首屏 HTML 里已经有一段静态加载页（保证数据脚本解析前就画出来），这里直接接管它
+    var el = doc.getElementById('kr-pre') || build();
     doc.documentElement.classList.add('kr-pre-lock');
     doc.body.appendChild(el);
 
@@ -94,7 +95,12 @@
   }
 
   function start() {
-    if (skipped()) { resolveDone(); return; }
+    if (skipped()) {
+      var el = doc.getElementById('kr-pre');
+      if (el && el.parentNode) el.parentNode.removeChild(el);
+      resolveDone();
+      return;
+    }
     run();
   }
 
