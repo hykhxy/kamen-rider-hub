@@ -454,3 +454,10 @@ html.kr-intro-lock .kr-replay{display:none}
   .kr-intro__src{height:34px;padding:0 10px;font-size:11px}
   .kr-intro__bar{top:12px;right:12px}
 }
+
+/* 开场：顶部压一层暗角，保证片源按钮在亮画面上也读得清 */
+.kr-intro::before{
+  content:"";position:absolute;left:0;right:0;top:0;height:140px;z-index:1;pointer-events:none;
+  background:linear-gradient(180deg,rgba(0,0,0,.66),rgba(0,0,0,.28) 52%,transparent);
+}
+.kr-intro__bar{z-index:3}
