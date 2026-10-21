@@ -485,3 +485,18 @@ html.kr-intro-lock .kr-replay{display:none}
 }
 .kr-intro__cta:hover{background:rgba(201,162,39,.28);color:#fff}
 .kr-intro__cta[hidden]{display:none}
+
+/* 开场：窄屏控制条最终布局 —— 片源一行、操作一行，互不覆盖 */
+@media (max-width:700px){
+  .kr-intro__bar{
+    left:8px !important; right:8px !important; top:max(8px,env(safe-area-inset-top)) !important;
+    display:flex; flex-wrap:wrap; gap:6px; justify-content:flex-end;
+  }
+  .kr-intro__srcs{
+    position:static !important; left:auto !important; top:auto !important;
+    order:0; width:100%; display:flex; justify-content:flex-end; gap:6px; margin:0 0 2px;
+  }
+  .kr-intro__src{height:32px;padding:0 9px;font-size:10.5px}
+  .kr-intro__btn,.kr-intro__skip{height:34px;font-size:11.5px}
+  .kr-intro__cta{top:50%;bottom:auto;transform:translate(-50%,-50%)}
+}
