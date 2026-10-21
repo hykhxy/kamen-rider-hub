@@ -618,7 +618,8 @@
         'aria-controls': 'map-panel-bd',
         'aria-expanded': S.sheet === 'open' ? 'true' : 'false',
         'aria-label': sheetBtnLabel(S.sheet === 'open'),
-        onclick: function () { setSheet(S.sheet === 'open' ? 'peek' : 'open'); }
+        // renderPanel 在模块作用域，拿不到 mount 里的 setSheet —— 走挂到 S 上的引用
+        onclick: function () { if (S && S.setSheet) S.setSheet(S.sheet === 'open' ? 'peek' : 'open'); }
       }, chevUp()));
     }
     host.appendChild(hd);
@@ -1026,6 +1027,8 @@
       for (var i = 0; i < S.nodes.length; i++) if (S.nodes[i].id === S.selId) return S.nodes[i];
       return null;
     }
+
+    S.setSheet = setSheet;
 
     function setSheet(state) {
       S.sheet = state;
