@@ -468,8 +468,9 @@
 @media (max-width:899px){
   /* 关卡片条 sticky：纵向轴高度随关卡变（L1 892 / L2 2176），切关后要有锚点。
      top 读 JS 实测的 --hud-h：hud 在这一档是两行 ≈ 88px，写死 54px 会钻到第二行底下。 */
+  /* 手机端不做吸顶：整页一起滚，避免「上面钉住、下面在动」的割裂感 */
   .map-levels{
-    position:sticky;top:var(--hud-h,88px);z-index:7;
+    position:static;top:auto;z-index:auto;
     background:linear-gradient(180deg,var(--ink-0) 78%,transparent);
     padding:6px 0 8px;margin:-6px 0 0
   }
