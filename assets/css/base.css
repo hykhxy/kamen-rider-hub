@@ -361,3 +361,30 @@ table{border-collapse:collapse;border-spacing:0}
 .plate--photo::after{box-shadow:inset 0 0 0 1px rgba(201,162,39,.5),0 10px 28px rgba(0,0,0,.6)}
 .plate--flat::before,.plate--flat::after{display:none}
 .plate--bad>img{filter:grayscale(.55) brightness(.7) blur(.4px)}
+
+/* ── 开场影像（intro.js）：全屏、可跳过 ───────────────────────── */
+html.kr-intro-lock{overflow:hidden}
+.kr-intro{
+  position:fixed;inset:0;z-index:9000;background:#000;
+  display:grid;place-items:center;
+  opacity:1;transition:opacity .38s var(--ease,ease)
+}
+.kr-intro.is-out{opacity:0;pointer-events:none}
+.kr-intro__v{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
+.kr-intro__bar{position:absolute;top:max(18px,env(safe-area-inset-top));right:max(18px,env(safe-area-inset-right));
+  z-index:2;display:flex;gap:10px}
+.kr-intro__skip{
+  display:inline-flex;align-items:center;gap:6px;
+  height:38px;padding:0 16px;cursor:pointer;
+  background:rgba(7,8,11,.62);color:var(--tx-0,#eef1f6);
+  border:1px solid rgba(201,162,39,.55);
+  font-family:inherit;font-size:12.5px;letter-spacing:.18em;
+  clip-path:polygon(0 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%);
+  transition:background .18s ease,border-color .18s ease,color .18s ease
+}
+.kr-intro__skip:hover{background:rgba(201,162,39,.16);border-color:var(--gold-hi,#e7c964);color:#fff}
+.kr-intro__skip:focus-visible{outline:2px solid var(--gold-hi,#e7c964);outline-offset:2px}
+.kr-intro__skip span{font-size:15px;line-height:1;opacity:.8}
+@media (max-width:560px){
+  .kr-intro__skip{height:34px;padding:0 12px;font-size:11.5px;letter-spacing:.12em}
+}
